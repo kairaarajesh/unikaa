@@ -187,7 +187,7 @@
 
                                     <div class="custom-control custom-checkbox">
                                         <input type="checkbox" class="custom-control-input" id="settings" name="permissions[]" value="settings">
-                                        <label class="custom-control-label" for="settings">Manage Settings</label>
+                                        <label class="custom-control-label" for="settings">Product</label>
                                     </div>
                                     <!-- Settings detailed permissions -->
                                     <div id="settings-details" class="ml-4 mt-2" style="display: none;">

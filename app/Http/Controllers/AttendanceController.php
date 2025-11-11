@@ -652,6 +652,9 @@ class AttendanceController extends Controller
                 $casualLeaveCount = $legacyLeaveCount;
             }
 
+            // Paid days exclude LOP; half days count as 0.5
+            $paidDays = $presentCount + $casualLeaveCount + ($halfDayCount * 0.5);
+            // Total days (legacy display) if still needed: present + casual + lop + half (full count)
             $totalDays = $presentCount + $casualLeaveCount + $lopCount + $halfDayCount;
 
             // Calculate total salary based on attendance
@@ -673,7 +676,7 @@ class AttendanceController extends Controller
                 'half_day_count' => $halfDayCount,
                 'casual_leave_count' => $casualLeaveCount,
                 'lop_count' => $lopCount,
-                'total_days' => $totalDays,
+                'paid_days' => $paidDays,
                 'calculated_total_salary' => $totalSalary,
                 'date_range' => $dateRange,
                 'salary_type' => gettype($employee->salary),
@@ -691,7 +694,7 @@ class AttendanceController extends Controller
                 'casual_leaves' => $casualLeaveCount,
                 'lop_days' => $lopCount,
                 'half_days' => $halfDayCount,
-                'total_days' => $totalDays,
+                'paid_days' => $paidDays,
                 'total_salary' => $totalSalary
             ];
         }
@@ -803,23 +806,15 @@ class AttendanceController extends Controller
             return 0;
         }
 
-        // For single day periods (today, yesterday), use a standard daily rate
-        if ($dateRange['start'] === $dateRange['end']) {
-            // Use standard 22 working days per month for daily calculation
-            $dailySalary = $monthlySalary / 22;
-        } else {
-            // For multi-day periods, calculate based on actual working days
-            $totalWorkingDays = $this->getTotalWorkingDays($dateRange);
-            if ($totalWorkingDays == 0) {
-                return 0;
-            }
-            $dailySalary = $monthlySalary / $totalWorkingDays;
-        }
+        // Standardize daily rate to fixed working days divisor (30 days/month)
+        // This aligns Paid Days * daily rate with requested format
+        $fixedWorkingDaysPerMonth = 30;
+        $dailySalary = $monthlySalary / $fixedWorkingDaysPerMonth;
 
         // Ensure daily salary is not zero
         if ($dailySalary <= 0) {
-            // Fallback to standard calculation
-            $dailySalary = $monthlySalary / 22; // Assume 22 working days per month
+            // Fallback to 22 if monthly salary is malformed
+            $dailySalary = $monthlySalary / 22;
         }
 
         // Calculate salary for different types of days
@@ -839,7 +834,6 @@ class AttendanceController extends Controller
             'casual_leaves' => $casualLeaves,
             'lop_days' => $lopDays,
             'date_range' => $dateRange,
-            'is_single_day' => ($dateRange['start'] === $dateRange['end']),
             'daily_salary' => $dailySalary,
             'present_salary' => $presentSalary,
             'half_day_salary' => $halfDaySalary,

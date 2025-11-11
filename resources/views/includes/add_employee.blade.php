@@ -31,7 +31,6 @@
                             <input type="email" class="form-control" id="employee_email" name="employee_email" required>
                         </div>
 
-                        <!-- Branch Selection (conditional for subadmin) -->
                         @php($authUser = auth()->user())
                         @if($authUser && method_exists($authUser, 'roles') && $authUser->roles()->where('slug','subadmin')->exists() && isset($authUser->branch_id))
                             <input type="hidden" name="branch_id" value="{{ $authUser->branch_id }}">
@@ -40,27 +39,26 @@
                                 <input type="text" class="form-control" value="{{ optional($Branch->first())->name }}" readonly>
                             </div>
                             <div class="form-group">
-                                <label for="placeSelect" class="col-sm-5 control-label">Place (Auto-filled from Branch Address)</label>
-                                <input type="text" class="form-control" id="branch-info-place" name="place" value="{{ optional($Branch->first())->address ?? optional($Branch->first())->place }}" readonly>
+                                <label for="placeSelect" class="col-sm-5 control-label">Place</label>
+                                <input type="text" class="form-control" id="branch-info-place" name="place" value="{{ optional($Branch->first())->place ?? optional($Branch->first())->address }}" readonly>
                             </div>
                         @else
-                        @endif
                             <div class="form-group">
-                                <label for="name">Branch Name</label>
-                                <select class="select select2s-hidden-accessible form-control" id="branch_id" name="branch_id">
-                                    <option selected disabled>Select Branch</option>
-                                    @foreach($Branch as $branch)
-                                        <option value="{{ $branch->id }}" data-address="{{ $branch->address }}" data-place="{{ $branch->place }}">
-                                            {{ $branch->name }}
-                                        </option>
-                                    @endforeach
-                                </select>
-                        </div>
-
-                            <div class="form-group">
-                                <label for="name">Address</label>
-                                <input type="text" class="form-control" placeholder="Auto-filled Address" id="branch-address" name="place" readonly />
+                                <label for="branch_id" class="col-sm-6 control-label">Branch</label>
+                                    <select class="select select2s-hidden-accessible form-control" id="branch_id" name="branch_id">
+                                        <option selected disabled>Select Branch</option>
+                                        @foreach($Branch as $branch)
+                                            <option value="{{ $branch->id }}" data-place="{{ $branch->place }}" data-address="{{ $branch->address }}">
+                                                {{ $branch->name }}
+                                            </option>
+                                        @endforeach
+                                    </select>
                             </div>
+                            <div class="form-group">
+                                <label for="placeSelect" class="col-sm-5 control-label">Place</label>
+                                <input type="text" class="form-control" id="branch-info-place" name="place" readonly>
+                            </div>
+                        @endif
 
                         <!-- Join Date -->
                         <div class="form-group">
@@ -161,10 +159,10 @@
                             <input type="number" class="form-control" placeholder="Salary" id="salary" name="salary" required>
                         </div>
 
-                        <!-- Employee Details -->
+                        <!-- Employee Address -->
                         <div class="form-group">
-                            <label for="address">Employee Details</label>
-                            <textarea type="text" class="form-control" placeholder="Employee Details" id="address" name="address"></textarea>
+                            <label for="address">Address</label>
+                            <textarea type="text" class="form-control" placeholder="Address" id="address" name="address"></textarea>
                         </div>
 
                         <!-- Form Actions -->
@@ -222,32 +220,24 @@
         }
     }
 </script>
+
 <script>
     document.addEventListener('DOMContentLoaded', function() {
         var branchSelect = document.getElementById('branch_id');
-        var addressInput = document.getElementById('branch-address');
+        var placeInput = document.getElementById('branch-info-place');
 
-        branchSelect.addEventListener('change', function() {
+        if (!branchSelect || !placeInput) { return; }
+
+        function updatePlaceFromBranch() {
             var selected = branchSelect.options[branchSelect.selectedIndex];
-            if (selected && selected.value) {
-                // Get address and place from data attributes
-                var address = selected.getAttribute('data-address') || '';
-                var place = selected.getAttribute('data-place') || '';
+            if (!selected) { placeInput.value = ''; return; }
+            var place = selected.getAttribute('data-address') || selected.getAttribute('data-place') || '';
+            placeInput.value = place;
+        }
 
-                // Format the address properly: Place, Address (same logic as edit form)
-                var formattedAddress = '';
-                if (place && address) {
-                    formattedAddress = place + ', ' + address;
-                } else if (place) {
-                    formattedAddress = place;
-                } else if (address) {
-                    formattedAddress = address;
-                }
+        branchSelect.addEventListener('change', updatePlaceFromBranch);
 
-                addressInput.value = formattedAddress;
-            } else {
-                addressInput.value = '';
-            }
-        });
+        // Initialize on load if a branch is preselected
+        updatePlaceFromBranch();
     });
 </script>

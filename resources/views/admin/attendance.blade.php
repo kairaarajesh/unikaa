@@ -190,14 +190,14 @@
                                         if (\Illuminate\Support\Facades\Schema::hasColumn('leaves', 'category')) {
                                             // Categorized leaves
                                             $casualLeaveCount = \App\Models\Leave::where('emp_id', $employee->id)
-                                                ->where('type', 1)
+                                                ->where('type', 0)
                                                 ->where('category', 'casual')
                                                 ->whereMonth('leave_date', now()->month)
                                                 ->whereYear('leave_date', now()->year)
                                                 ->count();
 
                                             $lopCount = \App\Models\Leave::where('emp_id', $employee->id)
-                                                ->where('type', 1)
+                                                ->where('type', 0)
                                                 ->where('category', 'lop')
                                                 ->whereMonth('leave_date', now()->month)
                                                 ->whereYear('leave_date', now()->year)
@@ -208,7 +208,7 @@
                                             // Legacy schema without category column
                                             // Count all type=1 leaves (no category info) to include in total
                                             $legacyLeaveCount = \App\Models\Leave::where('emp_id', $employee->id)
-                                                ->where('type', 1)
+                                                ->where('type', 0)
                                                 ->whereMonth('leave_date', now()->month)
                                                 ->whereYear('leave_date', now()->year)
                                                 ->count();
@@ -250,7 +250,7 @@
                                     <tr data-emp-id="{{ $employee->id }}">
                                         <td>{{ $employee->employee_id }}</td>
                                         <td>{{ $employee->employee_name }}</td>
-                                        <td>{{ number_format($employee->salary, 2) }}</td>
+                                        <td>{{ number_format($employee->salary , 2) }}</td>
                                         <td>{{ $presentCount }}</td>
                                         <td>{{ $casualLeaveCount }}</td>
                                         <td>{{ $lopCount }}</td>
@@ -293,7 +293,7 @@
                         <tr>
                             <td>{{ $employee->employee_id }}</td>
                             <td>{{ $employee->employee_name }}</td>
-                            <td>{{ $employee->branch }}</td>
+                            <td>{{ $employee->branch?->name ?? 'N/A' }}</td>
                             <td>
                                 <ul class="list-inline m-0 attd-pills">
                                     <li class="list-inline-item me-2">

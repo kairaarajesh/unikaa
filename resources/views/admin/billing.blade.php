@@ -48,9 +48,9 @@
         </ol>
     </div>
 @endsection
-@section('button')
+{{-- @section('button')
     <a href="#addnew" data-toggle="modal" class="btn btn-primary btn-sm btn-flat"><i class="mdi mdi-plus mr-2"></i>Add Billing</a>
-@endsection
+@endsection --}}
 
 @section('content')
 @include('includes.flash')

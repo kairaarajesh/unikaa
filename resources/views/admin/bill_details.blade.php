@@ -247,8 +247,10 @@
                 <p><strong>Phone Number:</strong> {{ $customer->number }}</p>
                 <p><strong>Email:</strong> {{ $customer->email }}</p>
                 <p><stong>Place:</stong>{{ $customer->branch?->name ?? 'N/A' }}</p>
-                <span class="member-status">Non Member</span>
-            </div>
+                <span class="member-status">
+                    {{ $customer->membership_card ? $customer->membership_card : 'Non Member' }}
+                </span>
+             </div>
             <div style="margin-left: auto;">
                 <button class="arrow-button">>></button>
             </div>

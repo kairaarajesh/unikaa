@@ -142,7 +142,7 @@
                             {{-- <form id="invoiceCreateForm" method="POST" action="{{ route('customer.store') }}">
                                  @csrf --}}
                                  <input type="hidden" name="customer_id" id="invoice-customer-id" value="">
-                    			<label><strong>Service Items *</strong></label>
+                    			<label><strong>Services</strong></label>
 							<div class="table-responsive">
 								<table class="table table-bordered table-striped table-hover table-big" id="service-items-table">
 									<thead class="thead-light">
@@ -159,7 +159,7 @@
 									<tbody id="service-items-body"></tbody>
 								</table>
 							</div>
-						<button type="button" class="btn btn-primary btn-lg" id="add-item">Add New Item</button>
+						<button type="button" class="btn btn-primary btn-lg" id="add-item">Add Service</button>
 						<div id="category-hidden-container"></div>
 						<div class="row" style="margin-top:12px;">
 							{{-- <div class="col-md-3">
@@ -186,7 +186,7 @@
 						<input type="hidden" name="total_calculation" id="total-calculation-hidden" value="0">
 
 						<div class="form-group">
-								<label><strong>Sales Items *</strong> </label>
+								<label><strong>Sales</strong> </label>
 								<div class="table-responsive">
 									<table class="table table-bordered table-striped table-hover table-big" id="purchase-items-table">
 										<thead class="thead-light">
@@ -195,7 +195,7 @@
 												<th>Product Code</th>
 												<th>Amount *</th>
 												<th>Discount (%)</th>
-												<th>Tax (%)</th>
+												{{-- <th>Tax (%)</th> --}}
 												<th>Total Amount</th>
 												<th>Action</th>
 											</tr>
@@ -203,7 +203,7 @@
 										<tbody id="purchase-items-body"></tbody>
 									</table>
 								</div>
-								<button type="button" class="btn btn-primary btn-lg" id="add-purchase-item">Add New Item</button>
+								<button type="button" class="btn btn-primary btn-lg" id="add-purchase-item">Add Sales</button>
 								<input type="hidden" name="purchase_total_amount" id="purchase-total-amount-hidden" value="0">
                         </div>
 						<div id="service-inputs"></div>
@@ -1060,9 +1060,6 @@
                 </td>
                 <td>
                     <input type="number" min="0" max="100" name="purchase_discount[]" inputmode="decimal" placeholder="0" class="form-control purchase-discount" value="0">
-                </td>
-                <td>
-                    <input type="number" min="0" max="100" name="purchase_tax[]" inputmode="decimal" placeholder="0" class="form-control purchase-tax" value="0">
                 </td>
                 <td>
                     <input type="text" name="purchase_line_total[]" class="form-control purchase-line-total" placeholder="0.00" value="0.00" readonly>

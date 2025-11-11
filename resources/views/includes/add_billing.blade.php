@@ -93,7 +93,7 @@
                     </div> --}}
                        <div class="form-group">
                             <label for="name">Payment Method</label>
-                                    <select class="form-control @error('payment') is-invalid @enderror" id="payment" name="payment">
+                                    <select class="form-control @error('payment') is-invalid @enderror" id="payment" name="payment" required>
                                         <option> --Select-- </option>
                                         <option value="Cash" {{ old('Cash') == 'Cash' ? 'selected' : '' }}>Cash</option>
                                         <option value="Debit card / Credit card" {{ old('Debit card / Credit card') == 'Debit card / Credit card' ? 'selected' : '' }}>Debit card / Credit card</option>
