@@ -53,6 +53,10 @@ class InvoiceController extends Controller
      */
     public function generatePdf($id)
     {
+        // Increase memory limit for PDF generation
+        ini_set('memory_limit', '512M');
+        ini_set('max_execution_time', 300);
+
         $invoice = Invoice::with(['customer', 'branch', 'employee'])->findOrFail($id);
 
         // Subadmin can only download invoices within their branch
@@ -70,7 +74,7 @@ class InvoiceController extends Controller
         ]);
         $todayDate = Carbon::now()->format('d-m-y');
 
-        return $pdf->download('invoice_' . $invoice->invoice_number . '_' . $todayDate . '.pdf');
+        return $pdf->download('UNIKAA INVOICE_' . $invoice->invoice_number . '_' . $todayDate . '.pdf');
     }
 
     /**
@@ -78,6 +82,10 @@ class InvoiceController extends Controller
      */
     public function viewPdf($id)
     {
+        // Increase memory limit for PDF generation
+        ini_set('memory_limit', '512M');
+        ini_set('max_execution_time', 300);
+
         $invoice = Invoice::with(['customer', 'branch', 'employee'])->findOrFail($id);
 
         // Subadmin can only view invoices within their branch

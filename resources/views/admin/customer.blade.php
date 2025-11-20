@@ -15,7 +15,7 @@
     <i class="mdi mdi-plus mr-2"></i>Invoice
 </a> --}}
 <a href="#addmember" data-toggle="modal" class="btn btn-primary btn-sm btn-flat">
-    <i class="mdi mdi-plus mr-2"></i>Add MP Card
+    <i class="mdi mdi-plus mr-2"></i>Add MB Card
 </a>
 @endsection
 
@@ -157,6 +157,7 @@
                                     <th data-priority="2">CUST Name</th>
                                     <th data-priority="2">CUST Email</th>
                                     <th data-priority="2">Gender</th>
+                                    <th data-priority="2">Date</th>
                                     {{-- <th data-priority="2">Branch</th> --}}
                                     @php $user = auth()->user(); @endphp
                                     @if($user && !in_array($user->role, range(1, 10)))
@@ -175,6 +176,7 @@
                                     <td>{{ $customer->name }}</td>
                                     <td>{{ $customer->email }}</td>
                                     <td>{{ $customer->gender }}</td>
+                                    <td>{{ explode(' ', $customer->date)[0] }}</td>
                                     {{-- <td class="scroll-x">{{ $customer->place }}</td> --}}
                                     @if($user && !in_array($user->role, range(1, 10)))
                                     <td>

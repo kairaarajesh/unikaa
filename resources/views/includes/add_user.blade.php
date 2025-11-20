@@ -1,3 +1,12 @@
+@php
+    $authUser = auth()->user();
+    $permissionMeta = checkUserPermissions($authUser);
+    $authPermissions = $permissionMeta['permissions'];
+    $authHasFullAccess = $permissionMeta['hasFullAccess'];
+    $canCreateSubadmin = $authHasFullAccess || hasPermission($authPermissions, 'subadmin', 'write');
+@endphp
+
+@if($canCreateSubadmin)
 <!-- Add -->
 <div class="modal fade" id="addnew">
     <div class="modal-dialog">
@@ -22,7 +31,11 @@
                                 <select class="select select2s-hidden-accessible form-control" id="branch_id" name="branch_id">
                                     <option selected disabled>Select Branch</option>
                                     @foreach($Branch as $branch)
-                                        <option value="{{ $branch->id }}" data-address="{{ $branch->address }}">
+                                        <option value="{{ $branch->id }}"
+                                            data-name="{{ $branch->name }}"
+                                            data-address="{{ $branch->address }}"
+                                            data-place="{{ $branch->place }}"
+                                            data-email="{{ $branch->email }}">
                                             {{ $branch->name }}
                                         </option>
                                     @endforeach
@@ -41,8 +54,8 @@
                         </div>
 
                         <div class="form-group">
-                            <label for="name">Password</label>
-                            <input type="text" class="form-control" placeholder="Enter Password" id="name" name="password"
+                            <label for="password">Password</label>
+                            <input type="text" class="form-control" placeholder="Enter Password" id="password" name="password"
                                 required />
                         </div>
                         {{-- <div class="form-group">
@@ -69,6 +82,36 @@
                                         <div class="custom-control custom-checkbox">
                                             <input type="checkbox" class="custom-control-input" id="employees_write" name="permissions_detail[employees][write]" value="1">
                                             <label class="custom-control-label" for="employees_write">Writing Access</label>
+                                        </div>
+                                    </div>
+
+                                    <div class="custom-control custom-checkbox">
+                                        <input type="checkbox" class="custom-control-input" id="employee_list" name="permissions[]" value="employee_list">
+                                        <label class="custom-control-label" for="employee_list">Employee List</label>
+                                    </div>
+                                    <div id="employee_list-details" class="ml-4 mt-2" style="display: none;">
+                                        <div class="custom-control custom-checkbox">
+                                            <input type="checkbox" class="custom-control-input" id="employee_list_read" name="permissions_detail[employee_list][read]" value="1">
+                                            <label class="custom-control-label" for="employee_list_read">Reading Access</label>
+                                        </div>
+                                        <div class="custom-control custom-checkbox">
+                                            <input type="checkbox" class="custom-control-input" id="employee_list_write" name="permissions_detail[employee_list][write]" value="1">
+                                            <label class="custom-control-label" for="employee_list_write">Writing Access</label>
+                                        </div>
+                                    </div>
+
+                                    <div class="custom-control custom-checkbox">
+                                        <input type="checkbox" class="custom-control-input" id="attendance" name="permissions[]" value="attendance">
+                                        <label class="custom-control-label" for="attendance">Attendance</label>
+                                    </div>
+                                    <div id="attendance-details" class="ml-4 mt-2" style="display: none;">
+                                        <div class="custom-control custom-checkbox">
+                                            <input type="checkbox" class="custom-control-input" id="attendance_read" name="permissions_detail[attendance][read]" value="1">
+                                            <label class="custom-control-label" for="attendance_read">Reading Access</label>
+                                        </div>
+                                        <div class="custom-control custom-checkbox">
+                                            <input type="checkbox" class="custom-control-input" id="attendance_write" name="permissions_detail[attendance][write]" value="1">
+                                            <label class="custom-control-label" for="attendance_write">Writing Access</label>
                                         </div>
                                     </div>
 
@@ -287,18 +330,20 @@ document.addEventListener('DOMContentLoaded', function() {
         const detailsDiv = document.getElementById(detailsId);
 
         if (mainCheckbox && detailsDiv) {
-            mainCheckbox.addEventListener('change', function() {
-                if (this.checked) {
+            const toggleDetails = () => {
+                if (mainCheckbox.checked) {
                     detailsDiv.style.display = 'block';
                 } else {
                     detailsDiv.style.display = 'none';
-                    // Uncheck the detailed permissions when main checkbox is unchecked
-                    const readCheckbox = detailsDiv.querySelector('input[type="checkbox"]:first-of-type');
-                    const writeCheckbox = detailsDiv.querySelector('input[type="checkbox"]:last-of-type');
-                    if (readCheckbox) readCheckbox.checked = false;
-                    if (writeCheckbox) writeCheckbox.checked = false;
+                    // Uncheck all detailed permissions when the main checkbox is unchecked
+                    detailsDiv.querySelectorAll('input[type="checkbox"]').forEach(checkbox => {
+                        checkbox.checked = false;
+                    });
                 }
-            });
+            };
+
+            mainCheckbox.addEventListener('change', toggleDetails);
+            toggleDetails();
         }
     }
 
@@ -308,6 +353,8 @@ document.addEventListener('DOMContentLoaded', function() {
     setupPermissionCheckbox('services', 'services-details');
     setupPermissionCheckbox('bookings', 'booking-details');
     setupPermissionCheckbox('subadmin', 'subadmin-details');
+    setupPermissionCheckbox('employee_list', 'employee_list-details');
+    setupPermissionCheckbox('attendance', 'attendance-details');
     setupPermissionCheckbox('billing', 'billing-details');
     setupPermissionCheckbox('bill_table', 'bill_table-details');
     setupPermissionCheckbox('reports', 'reports-details');
@@ -325,11 +372,54 @@ document.addEventListener('DOMContentLoaded', function() {
     document.addEventListener('DOMContentLoaded', function() {
         var branchSelect = document.getElementById('branch_id');
         var placeInput = document.getElementById('branch-info-place');
+        var emailInput = document.getElementById('email');
+        var passwordInput = document.getElementById('password');
 
-        branchSelect.addEventListener('change', function() {
+        function updateBranchFields() {
+            if (!branchSelect) return;
+
             var selected = branchSelect.options[branchSelect.selectedIndex];
-            var address = selected ? selected.getAttribute('data-address') || '' : '';
-            placeInput.value = address; // set branch address in input
-        });
+
+            if (selected && selected.value && selected.value !== 'Select Branch') {
+                // Get branch data from data attributes
+                var branchName = selected.getAttribute('data-name') || '';
+                var branchAddress = selected.getAttribute('data-address') || '';
+                var branchPlace = selected.getAttribute('data-place') || '';
+                var branchEmail = selected.getAttribute('data-email') || '';
+
+                // Auto-fill address field (prefer address, fallback to place, then name)
+                if (placeInput) {
+                    placeInput.value = branchAddress || branchPlace || branchName;
+                }
+
+                // Auto-generate email based on branch (optional - can be customized)
+                if (emailInput && !emailInput.value) {
+                    // Generate email from branch name (lowercase, replace spaces with dots)
+                    var emailSuggestion = branchName.toLowerCase().replace(/\s+/g, '.') + '@unika.com';
+                    emailInput.value = emailSuggestion;
+                }
+
+                // Auto-generate password based on branch (optional - can be customized)
+                if (passwordInput && !passwordInput.value) {
+                    // Generate password from branch name (first 3 letters + 123456)
+                    var passwordSuggestion = branchName.substring(0, 3).toLowerCase() + '123456';
+                    passwordInput.value = passwordSuggestion;
+                }
+            } else {
+                // Clear fields if no branch selected
+                if (placeInput) placeInput.value = '';
+            }
+        }
+
+        if (branchSelect) {
+            branchSelect.addEventListener('change', updateBranchFields);
+
+            // Also trigger on modal open if branch is already selected
+            $(document).on('shown.bs.modal', '#addnew', function() {
+                updateBranchFields();
+            });
+        }
     });
 </script>
+
+@endif

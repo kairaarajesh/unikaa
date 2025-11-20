@@ -4,7 +4,7 @@
     <!-- CSRF Token for AJAX -->
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <!-- FullCalendar CSS -->
-    <link href="{{ URL::asset('public/plugins/fullcalendar/css/fullcalendar.min.css') }}" rel="stylesheet" />
+    <link href="{{ URL::asset('plugins/fullcalendar/css/fullcalendar.min.css') }}" rel="stylesheet" />
     <style>
         .fc-event {
             cursor: pointer;
@@ -17,6 +17,31 @@
         }
         .booking-event:hover {
             background-color: #0056b3;
+        }
+        .booking-event-with-image {
+            color: #fff;
+            overflow: hidden;
+        }
+        .booking-event-content {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            padding: 2px 4px;
+        }
+        .booking-event-img {
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            background-size: cover;
+            background-position: center;
+            border: 2px solid rgba(255, 255, 255, 0.75);
+            flex-shrink: 0;
+        }
+        .booking-event-title {
+            font-weight: 600;
+            font-size: 12px;
+            line-height: 1.2;
+            color: inherit;
         }
         .fc-toolbar h2 {
             font-size: 1.5em;
@@ -80,6 +105,13 @@
             color: #6c757d;
             font-size: 0.9em;
         }
+        .booking-thumb {
+            width: 52px;
+            height: 52px;
+            object-fit: cover;
+            border-radius: 6px;
+            border: 1px solid #dee2e6;
+        }
     </style>
 @endsection
 
@@ -112,19 +144,35 @@
     </div>
     <div class="col-md-3">
         <div class="stat-card">
-            <div class="stat-number">{{ $bookings->where('date', date('d-m-Y'))->count() }}</div>
+            <div class="stat-number">{{ $bookings->filter(function($booking) {
+                $date = $booking['date'] ?? null;
+                if (!$date) return false;
+                try {
+                    return \Carbon\Carbon::parse($date)->isToday();
+                } catch (\Exception $e) {
+                    return false;
+                }
+            })->count() }}</div>
             <div class="stat-label">Today's Bookings</div>
         </div>
     </div>
     <div class="col-md-3">
         <div class="stat-card">
-            <div class="stat-number">{{ $bookings->where('date', '>=', date('Y-m-d'))->count() }}</div>
+            <div class="stat-number">{{ $bookings->filter(function($booking) {
+                $date = $booking['date'] ?? null;
+                if (!$date) return false;
+                try {
+                    return \Carbon\Carbon::parse($date)->isFuture() || \Carbon\Carbon::parse($date)->isToday();
+                } catch (\Exception $e) {
+                    return false;
+                }
+            })->count() }}</div>
             <div class="stat-label">Upcoming Bookings</div>
         </div>
     </div>
     <div class="col-md-3">
         <div class="stat-card">
-            <div class="stat-number">{{ $bookings->unique('service')->count() }}</div>
+            <div class="stat-number">{{ $bookings->pluck('serviceName')->filter()->unique()->count() ?: $bookings->pluck('service')->filter()->unique()->count() }}</div>
             <div class="stat-label">Services Offered</div>
         </div>
     </div>
@@ -180,18 +228,30 @@
 
 @section('script')
     <!-- jQuery (required for FullCalendar) -->
-    <script src="{{ URL::asset('public/assets/js/jquery.min.js') }}"></script>
+    <script src="{{ URL::asset('assets/js/jquery.min.js') }}"></script>
     <!-- Moment.js (required for FullCalendar v2) -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.29.1/moment.min.js"></script>
     <!-- FullCalendar JS -->
     <script src="{{ URL::asset('public/plugins/fullcalendar/js/fullcalendar.min.js') }}"></script>
     <!-- Bootstrap JS for modal support -->
-    <script src="{{ URL::asset('public/assets/js/bootstrap.min.js') }}"></script>
+    <script src="{{ URL::asset('assets/js/bootstrap.min.js') }}"></script>
 
-    <script>
+     <script>
     $(document).ready(function() {
         @if($bookings->count() > 0)
         var bookingEvents = [];
+        var placeholderImage = @json(asset('assets/images/Unikaa-Logo-14.png'));
+
+        function normalizeImageUrl(url) {
+            if (!url) {
+                return null;
+            }
+            if (/^https?:\/\//i.test(url)) {
+                return url;
+            }
+            url = url.replace(/^\/+/, '');
+            return window.location.origin + '/' + url;
+        }
         $('#calendar').fullCalendar({
             header: {
                 left: 'prev,next today',
@@ -221,6 +281,13 @@
                             var color = '#28a745';
                             if (date < todayStr) color = '#ff0000';
                             else if (date === todayStr) color = '#007bff';
+                            var previewImage = null;
+                            var firstWithImage = bookingsByDate[date].find(function(b) {
+                                return !!b.image;
+                            });
+                            if (firstWithImage) {
+                                previewImage = firstWithImage.image;
+                            }
                             return {
                                 id: 'date-' + date,
                                 title: 'Booked-' + count,
@@ -228,6 +295,7 @@
                                 allDay: true,
                                 className: 'booking-event',
                                 color: color,
+                                image: previewImage,
                                 extendedProps: {
                                     bookings: bookingsByDate[date],
                                     date: date
@@ -244,6 +312,18 @@
             },
             eventRender: function(event, element) {
                 element.attr('title', event.title);
+                var imageSrc = normalizeImageUrl(event.image) || placeholderImage;
+                var safeTitle = $('<div/>').text(event.title || '').html();
+                var contentEl = element.find('.fc-content');
+                if (contentEl.length) {
+                    contentEl.html(
+                        '<div class="booking-event-content">' +
+                            '<div class="booking-event-img" style="background-image:url(' + imageSrc + ');"></div>' +
+                            '<div class="booking-event-title">' + safeTitle + '</div>' +
+                        '</div>'
+                    );
+                    element.addClass('booking-event-with-image');
+                }
             },
             dayClick: function(date, jsEvent, view) {
                 var dayEvent = bookingEvents.find(function(event) {
@@ -310,12 +390,14 @@
             if (!bookings || bookings.length === 0) {
                 details += `<p>No bookings for this date.</p>`;
             } else {
-                details += `<div class=\"table-responsive\"><table class=\"table table-bordered\"><thead><tr><th>Name</th><th>Service</th><th>Gender</th><th>Email</th><th>Phone</th><th>Location</th><th>Time</th><th>Status</th><th class='artist-header' style='display:none'>Artist</th><th>Action</th></tr></thead><tbody>`;
+                details += `<div class=\"table-responsive\"><table class=\"table table-bordered\"><thead><tr><th>Image</th><th>Name</th><th>Service</th><th>Gender</th><th>Email</th><th>Phone</th><th>Location</th><th>Time</th><th>Status</th><th class='artist-header' style='display:none'>Artist</th><th>Action</th></tr></thead><tbody>`;
                 bookings.forEach(function(booking, idx) {
                     // Determine if the row should be disabled
                     var isDisabled = booking.status && (booking.status !== '' && booking.status !== null);
                     var saveBtnText = isDisabled ? 'Saved!' : 'Save';
+                    var normalizedImage = normalizeImageUrl(booking.image) || placeholderImage;
                     details += `<tr data-booking-id=\"${booking.id}\">
+                        <td><img src="${normalizedImage}" alt="Booking image" class="booking-thumb"></td>
                         <td>${booking.name}</td>
                         <td>${booking.service}</td>
                         <td>${booking.gender}</td>

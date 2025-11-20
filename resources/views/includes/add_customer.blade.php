@@ -32,48 +32,64 @@
 
                         @php($authUser = auth()->user())
                         @if($authUser && method_exists($authUser, 'roles') && $authUser->roles()->where('slug','subadmin')->exists() && isset($authUser->branch_id))
+                            @php($userBranch = $Branch->where('id', $authUser->branch_id)->first())
                             <input type="hidden" name="branch_id" value="{{ $authUser->branch_id }}">
                             <div class="form-group">
                                 <label class="col-sm-6 control-label">Branch</label>
-                                <input type="text" class="form-control" value="{{ optional($Branch->first())->name }}" readonly>
+                                <input
+                                    type="text"
+                                    class="form-control"
+                                    value="{{ $userBranch->name ?? '' }}"
+                                    data-branch-id="{{ $authUser->branch_id }}"
+                                    readonly
+                                >
                             </div>
                             <div class="form-group">
                                 <label for="placeSelect" class="col-sm-5 control-label">Place</label>
-                                <input type="text" class="form-control" id="branch-info-place" name="place" value="{{ optional($Branch->first())->place ?? optional($Branch->first())->address }}" readonly>
+                                <input
+                                    type="text"
+                                    class="form-control"
+                                    id="branch-info-place"
+                                    name="place"
+                                    value="{{ $userBranch->place ?? $userBranch->address ?? '' }}"
+                                    readonly
+                                >
                             </div>
                         @else
                             <div class="form-group">
                                 <label for="branch_id" class="col-sm-6 control-label">Branch</label>
-                                    <select class="select select2s-hidden-accessible form-control" id="branch_id" name="branch_id">
-                                        <option selected disabled>Select Branch</option>
-                                        @foreach($Branch as $branch)
-                                            <option value="{{ $branch->id }}" data-place="{{ $branch->place }}" data-address="{{ $branch->address }}">
-                                                {{ $branch->name }}
-                                            </option>
-                                        @endforeach
-                                    </select>
+                                <select class="select select2s-hidden-accessible form-control" id="branch_id" name="branch_id">
+                                    <option selected disabled>Select Branch</option>
+                                    @foreach($Branch as $branch)
+                                        <option value="{{ $branch->id }}" data-place="{{ $branch->place }}" data-address="{{ $branch->address }}">
+                                            {{ $branch->name }}
+                                        </option>
+                                    @endforeach
+                                </select>
                             </div>
                             <div class="form-group">
                                 <label for="placeSelect" class="col-sm-5 control-label">Place</label>
-                                <input type="text" class="form-control" id="branch-info-place" name="place" readonly>
+                                <input
+                                    type="text"
+                                    class="form-control"
+                                    id="branch-info-place"
+                                    name="place"
+                                    readonly
+                                >
                             </div>
                         @endif
 
 						<div class="form-group">
                                 <label for="employeeSelect" class="col-sm-5 control-label">Staff Name</label>
                                 <select class="select2 form-control" id="employeeSelect" name="employee_id">
-                                    <option selected disabled>---- ----</option>
-                                    @foreach($employees as $employee)
-                                        <option value="{{ $employee->id }}" data-employee-id="{{ $employee->employee_id }}">
-                                            {{ $employee->employee_name }}
-                                        </option>
-                                    @endforeach
+                                    <option selected disabled>---- Select Branch First ----</option>
                                 </select>
                         </div>
                             <div class="form-group">
                                 <label for="employeeDetailsSelect" class="col-sm-5 control-label">Staff ID</label>
                                 <input type="text" class="form-control" id="employeeDetails" name="employee_details" readonly>
                             </div>
+
 					<div class="form-group">
 						<label for="number">Customer Number</label>
 						<input type="text" class="form-control" placeholder="Enter or select number" id="numberInput" name="number" list="existingNumbers" inputmode="numeric" maxlength="10" pattern="[0-9]{10}" title="Please enter a 10-digit phone number"/>
@@ -120,22 +136,13 @@
                                         <option value="Female" {{ old('gender') == 'Female' ? 'selected' : '' }}>Female</option>
                                     </select>
                         </div>
-						 {{-- <div class="form-group">
+						 <div class="form-group">
 							<label for="date" class="col-sm-3 control-label">Date</label>
 								<div class="bootstrap">
 									<input type="date" class="form-control" id="date" name="date" autofocus>
 								</div>
-						</div> --}}
-                        <div class="form-group">
-                            <label for="name">Payment Method</label>
-                                    <select class="form-control @error('payment') is-invalid @enderror" id="payment" name="payment">
-                                        <option> --Select-- </option>
-                                        <option value="Cash" {{ old('Cash') == 'Cash' ? 'selected' : '' }}>Cash</option>
-                                        <option value="Debit card / Credit card" {{ old('Debit card / Credit card') == 'Debit card / Credit card' ? 'selected' : '' }}>Debit card / Credit card</option>
-                                        <option value="Paytm" {{ old('Paytm') == 'Paytm' ? 'selected' : '' }}>Paytm</option>
-                                        <option value="Gpay" {{ old('Gpay') == 'Gpay' ? 'selected' : '' }}>Gpay</option>
-                                    </select>
-                        </div>
+						</div>
+
                                     <input type="hidden" name="service_items" id="service-items-hidden" >
                                     <input type="hidden" name="purchase_items" id="purchase-items-hidden">
                         <div class="modal-body">
@@ -206,6 +213,112 @@
 								<button type="button" class="btn btn-primary btn-lg" id="add-purchase-item">Add Sales</button>
 								<input type="hidden" name="purchase_total_amount" id="purchase-total-amount-hidden" value="0">
                         </div>
+
+ <div class="form-group" name="payment[]">
+                            <label>Payment Method</label>
+                            <div>
+                                <div class="form-check">
+                                    <input class="form-check-input"
+                                        type="checkbox"
+                                        name="payment[]"
+                                        value="Cash"
+                                        id="payment_cash"
+                                        {{ is_array(old('payment')) && in_array('Cash', old('payment')) ? 'checked' : '' }}>
+                                    <label class="form-check-label" for="payment_cash">
+                                        Cash
+                                    </label>
+                                </div>
+
+                                <div class="form-check">
+                                    <input class="form-check-input"
+                                        type="checkbox"
+                                        name="payment[]"
+                                        value="Debit card / Credit card"
+                                        id="payment_card"
+                                        {{ is_array(old('payment')) && in_array('Debit card / Credit card', old('payment')) ? 'checked' : '' }}>
+                                    <label class="form-check-label" for="payment_card">
+                                        Debit card / Credit card
+                                    </label>
+                                </div>
+
+                                <div class="form-check">
+                                    <input class="form-check-input"
+                                        type="checkbox"
+                                        name="payment[]"
+                                        value="Paytm"
+                                        id="payment_paytm"
+                                        {{ is_array(old('payment')) && in_array('Paytm', old('payment')) ? 'checked' : '' }}>
+                                    <label class="form-check-label" for="payment_paytm">
+                                        Paytm
+                                    </label>
+                                </div>
+
+                                <div class="form-check">
+                                    <input class="form-check-input"
+                                        type="checkbox"
+                                        name="payment[]"
+                                        value="Gpay"
+                                        id="payment_gpay"
+                                        {{ is_array(old('payment')) && in_array('Gpay', old('payment')) ? 'checked' : '' }}>
+                                    <label class="form-check-label" for="payment_gpay">
+                                        Gpay
+                                    </label>
+                                </div>
+                            </div>
+                            @error('payment')
+                                <div class="invalid-feedback d-block">{{ $message }}</div>
+                            @enderror
+                        </div>
+
+                        <!-- Cash Payment Details Section -->
+                        <div class="form-group" id="cash-payment-section" style="display: none; margin-top: 15px;">
+                            <label><strong>Cash Payment Details</strong></label>
+                            <div class="table-responsive">
+                                <table class="table table-bordered table-striped" id="cash-payment-table">
+                                    <thead class="thead-light">
+                                        <tr>
+                                            <th>Cash Total Amount</th>
+                                            <th>Buy Amount</th>
+                                            <th>Refund Amount</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr>
+                                            <td>
+                                                <input type="number"
+                                                    class="form-control"
+                                                    id="cash_amount"
+                                                    name="cash_amount"
+                                                    step="0.01"
+                                                    min="0"
+                                                    placeholder="0.00"
+                                                    value="{{ old('cash_amount', '') }}">
+                                            </td>
+                                            <td>
+                                                <input type="number"
+                                                    class="form-control"
+                                                    id="cash_refund_amount"
+                                                    name="cash_refund_amount"
+                                                    step="0.01"
+                                                    min="0"
+                                                    placeholder="0.00"
+                                                    value="{{ old('cash_refund_amount', '') }}">
+                                            </td>
+                                            <td>
+                                                <input type="text"
+                                                    class="form-control"
+                                                    id="cash_total_amount"
+                                                    name="cash_total_amount"
+                                                    readonly
+                                                    placeholder="0.00"
+                                                    value="0.00">
+                                            </td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+
 						<div id="service-inputs"></div>
                          </div>
                     {{-- </form> --}}
@@ -1363,12 +1476,12 @@
     });
 </script>
 
-{{-- <script>
+<script>
 function myFunction() {
   let x = document.getElementById("date").autofocus;
   document.getElementById("demo").innerHTML = x;
 }
-</script> --}}
+</script>
 
 <script>
     document.addEventListener('DOMContentLoaded', function() {
@@ -1599,5 +1712,244 @@ function myFunction() {
     })();
 </script>
 
+<!-- Dynamic Employee Loading by Branch -->
+<script>
+    (function() {
+        function waitForJQuery(callback) {
+            if (typeof jQuery !== 'undefined') {
+                callback();
+            } else {
+                setTimeout(function() { waitForJQuery(callback); }, 100);
+            }
+        }
+
+        waitForJQuery(function() {
+            var branchSelect = document.getElementById('branch_id');
+            var branchInputReadonly = document.querySelector('input[data-branch-id][readonly]');
+            var employeeSelect = document.getElementById('employeeSelect');
+            var employeeDetails = document.getElementById('employeeDetails');
+
+            function loadEmployeesByBranch(branchId) {
+                if (!branchId || branchId === '' || branchId === 'Select Branch') {
+                    // Clear employee dropdown
+                    if (employeeSelect) {
+                        employeeSelect.innerHTML = '<option selected disabled>---- Select Branch First ----</option>';
+                        if (employeeDetails) employeeDetails.value = '';
+                        employeeSelect.disabled = false;
+
+                        // Refresh select2 if it's initialized
+                        if (jQuery(employeeSelect).hasClass('select2-hidden-accessible')) {
+                            jQuery(employeeSelect).trigger('change.select2');
+                        }
+                    }
+                    return;
+                }
+
+                // Show loading state
+                if (employeeSelect) {
+                    employeeSelect.innerHTML = '<option>Loading employees...</option>';
+                    employeeSelect.disabled = true;
+                }
+
+                // Make AJAX call to fetch employees
+                jQuery.ajax({
+                    url: '{{ route("customer.get-employees-by-branch") }}',
+                    method: 'POST',
+                    data: {
+                        branch_id: branchId,
+                        _token: '{{ csrf_token() }}'
+                    },
+                    success: function(response) {
+                        if (response.success && response.employees) {
+                            // Clear and populate employee dropdown with only employee_name
+                            if (employeeSelect) {
+                                employeeSelect.innerHTML = '<option selected disabled>---- Select Staff ----</option>';
+
+                                response.employees.forEach(function(employee) {
+                                    var option = document.createElement('option');
+                                    option.value = employee.id;
+                                    // Format: Employee Name (Employee ID)
+                                    var displayText = employee.employee_name;
+                                    if (employee.employee_id) {
+                                        displayText += ' (' + employee.employee_id + ')';
+                                    }
+                                    option.textContent = displayText;
+                                    option.setAttribute('data-employee-id', employee.employee_id || '');
+                                    employeeSelect.appendChild(option);
+                                });
+
+                                employeeSelect.disabled = false;
+
+                                // Refresh select2 if it's initialized
+                                if (jQuery(employeeSelect).hasClass('select2-hidden-accessible')) {
+                                    jQuery(employeeSelect).trigger('change.select2');
+                                }
+                            }
+                        } else {
+                            if (employeeSelect) {
+                                employeeSelect.innerHTML = '<option selected disabled>---- No Employees Found ----</option>';
+                                employeeSelect.disabled = false;
+
+                                // Refresh select2 if it's initialized
+                                if (jQuery(employeeSelect).hasClass('select2-hidden-accessible')) {
+                                    jQuery(employeeSelect).trigger('change.select2');
+                                }
+                            }
+                        }
+                    },
+                    error: function(xhr) {
+                        console.error('Error loading employees:', xhr);
+                        if (employeeSelect) {
+                            employeeSelect.innerHTML = '<option selected disabled>---- Error Loading Employees ----</option>';
+                            employeeSelect.disabled = false;
+
+                            // Refresh select2 if it's initialized
+                            if (jQuery(employeeSelect).hasClass('select2-hidden-accessible')) {
+                                jQuery(employeeSelect).trigger('change.select2');
+                            }
+                        }
+                    }
+                });
+            }
+
+            // Handle branch select change (for non-subadmin users)
+            if (branchSelect) {
+                branchSelect.addEventListener('change', function() {
+                    var selectedBranchId = this.value;
+                    loadEmployeesByBranch(selectedBranchId);
+                });
+            }
+
+            // Load employees when modal opens
+            $(document).on('shown.bs.modal', '#addnew', function() {
+                var branchIdToLoad = null;
+
+                // For subadmin: get branch_id from data attribute
+                if (branchInputReadonly) {
+                    branchIdToLoad = branchInputReadonly.getAttribute('data-branch-id');
+                } else if (branchSelect && branchSelect.value && branchSelect.value !== 'Select Branch') {
+                    // For non-subadmin: use selected branch
+                    branchIdToLoad = branchSelect.value;
+                }
+
+                if (branchIdToLoad) {
+                    loadEmployeesByBranch(branchIdToLoad);
+                }
+            });
+
+            // Clear employee dropdown when modal is closed
+            $(document).on('hidden.bs.modal', '#addnew', function() {
+                if (employeeSelect) {
+                    employeeSelect.innerHTML = '<option selected disabled>---- Select Branch First ----</option>';
+                    if (employeeDetails) employeeDetails.value = '';
+                    employeeSelect.disabled = false;
+
+                    // Refresh select2 if it's initialized
+                    if (jQuery(employeeSelect).hasClass('select2-hidden-accessible')) {
+                        jQuery(employeeSelect).trigger('change.select2');
+                    }
+                }
+            });
+
+            // Update employee details when employee is selected
+            if (employeeSelect) {
+                employeeSelect.addEventListener('change', function() {
+                    var selectedOption = this.options[this.selectedIndex];
+                    if (selectedOption && employeeDetails) {
+                        var employeeId = selectedOption.getAttribute('data-employee-id') || '';
+                        employeeDetails.value = employeeId;
+                    }
+                });
+            }
+        });
+    })();
+</script>
+
+<!-- Cash Payment Section Handler -->
+<script>
+    (function() {
+        function waitForDom(cb) {
+            if (document.readyState === 'complete' || document.readyState === 'interactive') {
+                return cb();
+            }
+            document.addEventListener('DOMContentLoaded', cb);
+        }
+
+        waitForDom(function() {
+            var cashCheckbox = document.getElementById('payment_cash');
+            var cashSection = document.getElementById('cash-payment-section');
+            var cashAmountInput = document.getElementById('cash_amount');
+            var cashRefundInput = document.getElementById('cash_refund_amount');
+            var cashTotalInput = document.getElementById('cash_total_amount');
+
+            if (!cashCheckbox || !cashSection) return;
+
+            // Function to calculate and update total
+            function calculateCashTotal() {
+                if (!cashAmountInput || !cashRefundInput || !cashTotalInput) return;
+
+                var amount = parseFloat(cashAmountInput.value) || 0;
+                var refund = parseFloat(cashRefundInput.value) || 0;
+                var total = amount - refund;
+
+                // Ensure total is not negative
+                if (total < 0) {
+                    total = 0;
+                }
+
+                cashTotalInput.value = total.toFixed(2);
+            }
+
+            // Function to toggle cash section visibility
+            function toggleCashSection() {
+                if (cashCheckbox.checked) {
+                    cashSection.style.display = 'block';
+                    // Focus on amount input when shown
+                    if (cashAmountInput) {
+                        setTimeout(function() {
+                            cashAmountInput.focus();
+                        }, 100);
+                    }
+                } else {
+                    cashSection.style.display = 'none';
+                    // Clear values when hidden
+                    if (cashAmountInput) cashAmountInput.value = '';
+                    if (cashRefundInput) cashRefundInput.value = '';
+                    if (cashTotalInput) cashTotalInput.value = '0.00';
+                }
+            }
+
+            // Handle checkbox change
+            cashCheckbox.addEventListener('change', toggleCashSection);
+
+            // Handle amount and refund input changes
+            if (cashAmountInput) {
+                cashAmountInput.addEventListener('input', calculateCashTotal);
+                cashAmountInput.addEventListener('change', calculateCashTotal);
+            }
+
+            if (cashRefundInput) {
+                cashRefundInput.addEventListener('input', calculateCashTotal);
+                cashRefundInput.addEventListener('change', calculateCashTotal);
+            }
+
+            // Initialize on page load (in case checkbox is pre-checked from old input)
+            toggleCashSection();
+
+            // Also handle when modal opens (in case it's already checked)
+            if (typeof jQuery !== 'undefined') {
+                jQuery(document).on('shown.bs.modal', '#addnew', function() {
+                    toggleCashSection();
+                });
+
+                // Clear cash section when modal is closed
+                jQuery(document).on('hidden.bs.modal', '#addnew', function() {
+                    if (cashCheckbox) cashCheckbox.checked = false;
+                    toggleCashSection();
+                });
+            }
+        });
+    })();
+</script>
 
 <!-- add customer -->

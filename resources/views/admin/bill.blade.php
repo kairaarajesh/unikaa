@@ -63,7 +63,8 @@
                                 <td>{{ $bill->customer->name ?? 'N/A' }}</td>
                                 <td>{{ $bill->customer->customer_id ?? 'N/A' }}</td>
                                 <td>{{ $bill->customer->number ?? 'N/A' }}</td>
-                                <td>{{ optional($bill->date)->format('d/m/Y H:i') }}</td>
+                                {{-- <td>{{ optional($bill->date)->format('d/m/Y H:i') }}</td> --}}
+                                <td>{{ explode(' ', $bill->date)[0] }}</td>
                                 <td>{{ number_format((float) $bill->amount, 2) }}</td>
                                 <td>{{ number_format((float) $bill->tax, 2) }}</td>
                                 <td>{{ number_format((float) $bill->total_amount, 2) }}</td>
@@ -220,12 +221,9 @@
 
 <script>
 function printInvoice(invoiceId) {
-    // Open the invoice in a new window for printing (by invoice id)
     const printWindow = window.open('{{ route('invoice.view', ':id') }}'.replace(':id', invoiceId), '_blank', 'width=800,height=600');
-
-    // Wait for the window to load, then trigger print dialog
     printWindow.onload = function() {
-        // Small delay to ensure content is fully loaded
+
         setTimeout(function() {
             printWindow.print();
         }, 1000);

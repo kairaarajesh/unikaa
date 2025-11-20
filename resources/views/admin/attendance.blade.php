@@ -12,6 +12,12 @@
             .attd-pills input[type="radio"]:checked + .pill.present { background: #e8f7ee; border-color: #198754; color: #198754; }
             .attd-pills input[type="radio"]:checked + .pill.absent { background: #fdeaea; border-color: #dc3545; color: #dc3545; }
             .attd-pills input[type="radio"]:checked + .pill.half { background: #fff7e6; border-color: #ffc107; color: #b58100; }
+            /* Styles for read-only list view pills (without radio buttons) */
+            .attendance-list-view .attd-pills .pill { cursor: default; }
+            .attendance-list-view .attd-pills .pill:hover { background: inherit; border-color: inherit; }
+            .attendance-list-view .attd-pills .pill.present { background: #e8f7ee; border-color: #198754; color: #198754; }
+            .attendance-list-view .attd-pills .pill.absent { background: #fdeaea; border-color: #dc3545; color: #dc3545; }
+            .attendance-list-view .attd-pills .pill.half { background: #fff7e6; border-color: #ffc107; color: #b58100; }
             .attd-pills .pill.saved-success { box-shadow: 0 0 0 2px rgba(25,135,84,0.25) inset; }
             .attd-pills .pill.today-success { border-color: #198754 !important; background: #e8f7ee !important; color: #198754 !important; }
             /* Hide colors when no date is selected */
@@ -95,6 +101,101 @@
                 background: linear-gradient(135deg, #f8d7da 0%, #f5c6cb 100%);
                 color: #721c24;
             }
+
+            /* List View Styling for Past Dates */
+            .attendance-list-view {
+                display: none;
+            }
+            .attendance-list-view.active {
+                display: block;
+            }
+            .attendance-list-item {
+                background: #fff;
+                border: 1px solid #dee2e6;
+                border-radius: 8px;
+                padding: 15px;
+                margin-bottom: 12px;
+                transition: all 0.2s ease;
+            }
+            .attendance-list-item:hover {
+                box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+                transform: translateY(-1px);
+            }
+            .attendance-list-item .emp-info {
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                flex-wrap: wrap;
+                gap: 10px;
+            }
+            .attendance-list-item .emp-details {
+                flex: 1;
+                min-width: 200px;
+            }
+            .attendance-list-item .emp-id {
+                font-weight: 600;
+                color: #495057;
+                font-size: 14px;
+            }
+            .attendance-list-item .emp-name {
+                color: #6c757d;
+                font-size: 13px;
+                margin-top: 4px;
+            }
+            .attendance-list-item .emp-branch {
+                color: #868e96;
+                font-size: 12px;
+                margin-top: 2px;
+            }
+            .attendance-list-item .attendance-status {
+                display: flex;
+                align-items: center;
+                gap: 8px;
+            }
+            .attendance-list-item .status-badge {
+                padding: 6px 12px;
+                border-radius: 20px;
+                font-size: 12px;
+                font-weight: 500;
+            }
+            .status-badge.present {
+                background: #e8f7ee;
+                color: #198754;
+                border: 1px solid #198754;
+            }
+            .status-badge.absent {
+                background: #fdeaea;
+                color: #dc3545;
+                border: 1px solid #dc3545;
+            }
+            .status-badge.half-day {
+                background: #fff7e6;
+                color: #b58100;
+                border: 1px solid #ffc107;
+            }
+            .status-badge:not(.present):not(.absent):not(.half-day) {
+                background: #e9ecef;
+                color: #6c757d;
+                border: 1px solid #ced4da;
+            }
+            .attendance-list-item .time-info {
+                font-size: 11px;
+                color: #6c757d;
+                margin-top: 8px;
+                padding-top: 8px;
+                border-top: 1px solid #e9ecef;
+            }
+            .attendance-table-view {
+                display: block;
+            }
+            .attendance-table-view.hidden {
+                display: none !important;
+            }
+            /* Ensure radio buttons are disabled and hidden for past dates */
+            .attendance-table-view.hidden .attendance-radio {
+                pointer-events: none;
+                opacity: 0.5;
+            }
         </style>
 
         {{-- Attendance Statistics --}}
@@ -164,7 +265,7 @@
                                         <th>Casual Leaves</th>
                                         <th>LOP Days</th>
                                         <th>Half Days</th>
-                                        <th>Total Days</th>
+                                        <th>Paid Days</th>
                                         <th>Total Salary</th>
                                     </tr>
                                 </thead>
@@ -217,24 +318,15 @@
                                             $totalDays = $presentCount + $legacyLeaveCount + $halfDayCount;
                                         }
 
-                                        // Calculate total salary for current month
+                                        // Calculate total salary for current month (standardized daily rate)
                                         $monthlySalary = $employee->salary;
                                         $currentMonth = now()->month;
                                         $currentYear = now()->year;
                                         $startDate = now()->startOfMonth()->format('Y-m-d');
                                         $endDate = now()->endOfMonth()->format('Y-m-d');
 
-                                        // Get working days in current month (excluding weekends)
-                                        $startCarbon = \Carbon\Carbon::parse($startDate);
-                                        $endCarbon = \Carbon\Carbon::parse($endDate);
-                                        $workingDays = 0;
-                                        $currentDate = $startCarbon->copy();
-                                        while ($currentDate->lte($endCarbon)) {
-                                            if ($currentDate->dayOfWeek >= 1 && $currentDate->dayOfWeek <= 5) {
-                                                $workingDays++;
-                                            }
-                                            $currentDate->addDay();
-                                        }
+                                        // Use fixed working days per month for consistency (30)
+                                        $workingDays = 30;
 
                                         // Calculate daily salary rate
                                         $dailySalary = $workingDays > 0 ? $monthlySalary / $workingDays : 0;
@@ -246,6 +338,8 @@
                                         $lopSalary = $lopCount * 0; // No salary for LOP days
 
                                         $totalSalary = round($presentSalary + $halfDaySalary + $casualLeaveSalary + $lopSalary, 2);
+                                        // Calculate paid days (exclude LOP, half-day = 0.5)
+                                        $paidDays = $presentCount + $casualLeaveCount + ($halfDayCount * 0.5);
                                     @endphp
                                     <tr data-emp-id="{{ $employee->id }}">
                                         <td>{{ $employee->employee_id }}</td>
@@ -255,7 +349,7 @@
                                         <td>{{ $casualLeaveCount }}</td>
                                         <td>{{ $lopCount }}</td>
                                         <td>{{ $halfDayCount }}</td>
-                                        <td>{{ $totalDays }}</td>
+                                        <td>{{ rtrim(rtrim(number_format($paidDays, 2, '.', ''), '0'), '.') }}</td>
                                         <td>{{ number_format($totalSalary, 2) }}</td>
                                     </tr>
                                     @endforeach
@@ -272,63 +366,77 @@
             @csrf
             <div class="d-flex mb-3">
                 <input type="date" name="attendance_date" class="form-control w-auto me-2" value="{{ now()->format('Y-m-d') }}" id="attendanceDateInput">
-                <button type="submit" class="btn btn-primary me-2">Save Attendance</button>
+                <button type="submit" class="btn btn-primary me-2" id="saveAttendanceBtn">Save Attendance</button>
                 {{-- <a href="" class="btn btn-warning me-2">Get Attendance Details</a> --}}
                 {{-- <a href="" class="btn btn-success">Export to Excel</a> --}}
             </div>
 
-            {{-- Employee Table --}}
-            <div class="table-responsive">
-                <table class="table table-bordered align-middle">
-                    <thead>
-                        <tr>
-                            <th>Emp Id</th>
-                            <th>Emp Name</th>
-                            <th>Branch</th>
-                            <th>Attendance</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        @foreach ($employees as $employee)
-                        <tr>
-                            <td>{{ $employee->employee_id }}</td>
-                            <td>{{ $employee->employee_name }}</td>
-                            <td>{{ $employee->branch?->name ?? 'N/A' }}</td>
-                            <td>
-                                <ul class="list-inline m-0 attd-pills">
-                                    <li class="list-inline-item me-2">
-                                        <label>
-                                            <input type="radio" name="attendance[{{ $employee->id }}]" value="present" class="attendance-radio" data-emp-id="{{ $employee->id }}" data-type="present" {{ old('attendance.' . $employee->id) == 'present' ? 'checked' : '' }}>
-                                            <span class="pill present">✓ Present</span>
-                                        </label>
-                                    </li>
-                                    <li class="list-inline-item me-2">
-                                        <label>
-                                            <input type="radio" name="attendance[{{ $employee->id }}]" value="absent" class="attendance-radio" data-emp-id="{{ $employee->id }}" data-type="absent" {{ old('attendance.' . $employee->id) == 'absent' ? 'checked' : '' }}>
-                                            <span class="pill absent">✗ Absent</span>
-                                        </label>
-                                    </li>
-                                    <li class="list-inline-item">
-                                        <label>
-                                            <input type="radio" name="attendance[{{ $employee->id }}]" value="half_day" class="attendance-radio" data-emp-id="{{ $employee->id }}" data-type="half_day" {{ old('attendance.' . $employee->id) == 'half_day' ? 'checked' : '' }}>
-                                            <span class="pill half">✗ Half Day</span>
-                                        </label>
-                                    </li>
-                                </ul>
-                                <input type="hidden" name="login_time[{{ $employee->id }}]" id="login_time_{{ $employee->id }}" value="{{ old('login_time.' . $employee->id) }}">
-                                <input type="hidden" name="logout_time[{{ $employee->id }}]" id="logout_time_{{ $employee->id }}" value="{{ old('logout_time.' . $employee->id) }}">
-                                <input type="hidden" name="half_type[{{ $employee->id }}]" id="half_type_{{ $employee->id }}" value="{{ old('half_type.' . $employee->id) }}">
-                                <input type="hidden" name="permission_taken[{{ $employee->id }}]" id="permission_taken_{{ $employee->id }}" value="{{ old('permission_taken.' . $employee->id) }}">
-                                <input type="hidden" name="permission_reason[{{ $employee->id }}]" id="permission_reason_{{ $employee->id }}" value="{{ old('permission_reason.' . $employee->id) }}">
-                                <input type="hidden" name="permission_from[{{ $employee->id }}]" id="permission_from_{{ $employee->id }}" value="{{ old('permission_from.' . $employee->id) }}">
-                                <input type="hidden" name="permission_to[{{ $employee->id }}]" id="permission_to_{{ $employee->id }}" value="{{ old('permission_to.' . $employee->id) }}">
-                                <input type="hidden" name="casual_leave[{{ $employee->id }}]" id="casual_leave_{{ $employee->id }}" value="{{ old('casual_leave.' . $employee->id) }}">
-                                <input type="hidden" name="lop[{{ $employee->id }}]" id="lop_{{ $employee->id }}" value="{{ old('lop.' . $employee->id) }}">
-                            </td>
-                        </tr>
-                        @endforeach
-                    </tbody>
-                </table>
+            {{-- List View for Past Dates --}}
+            <div class="attendance-list-view" id="attendanceListView">
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="mb-0">Attendance List (Read-Only)</h5>
+                    </div>
+                    <div class="card-body" id="attendanceListBody">
+                        <p class="text-muted text-center">Loading attendance data...</p>
+                    </div>
+                </div>
+            </div>
+
+            {{-- Employee Table for Current/Future Dates --}}
+            <div class="attendance-table-view" id="attendanceTableView">
+                <div class="table-responsive">
+                    <table class="table table-bordered align-middle">
+                        <thead>
+                            <tr>
+                                <th>Emp Id</th>
+                                <th>Emp Name</th>
+                                <th>Branch</th>
+                                <th>Attendance</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach ($employees as $employee)
+                            <tr>
+                                <td>{{ $employee->employee_id }}</td>
+                                <td>{{ $employee->employee_name }}</td>
+                                <td>{{ $employee->branch?->name ?? 'N/A' }}</td>
+                                <td>
+                                    <ul class="list-inline m-0 attd-pills">
+                                        <li class="list-inline-item me-2">
+                                            <label>
+                                                <input type="radio" name="attendance[{{ $employee->id }}]" value="present" class="attendance-radio" data-emp-id="{{ $employee->id }}" data-type="present" {{ old('attendance.' . $employee->id) == 'present' ? 'checked' : '' }}>
+                                                <span class="pill present">✓ Present</span>
+                                            </label>
+                                        </li>
+                                        <li class="list-inline-item me-2">
+                                            <label>
+                                                <input type="radio" name="attendance[{{ $employee->id }}]" value="absent" class="attendance-radio" data-emp-id="{{ $employee->id }}" data-type="absent" {{ old('attendance.' . $employee->id) == 'absent' ? 'checked' : '' }}>
+                                                <span class="pill absent">✗ Absent</span>
+                                            </label>
+                                        </li>
+                                        <li class="list-inline-item">
+                                            <label>
+                                                <input type="radio" name="attendance[{{ $employee->id }}]" value="half_day" class="attendance-radio" data-emp-id="{{ $employee->id }}" data-type="half_day" {{ old('attendance.' . $employee->id) == 'half_day' ? 'checked' : '' }}>
+                                                <span class="pill half">✗ Half Day</span>
+                                            </label>
+                                        </li>
+                                    </ul>
+                                    <input type="hidden" name="login_time[{{ $employee->id }}]" id="login_time_{{ $employee->id }}" value="{{ old('login_time.' . $employee->id) }}">
+                                    <input type="hidden" name="logout_time[{{ $employee->id }}]" id="logout_time_{{ $employee->id }}" value="{{ old('logout_time.' . $employee->id) }}">
+                                    <input type="hidden" name="half_type[{{ $employee->id }}]" id="half_type_{{ $employee->id }}" value="{{ old('half_type.' . $employee->id) }}">
+                                    <input type="hidden" name="permission_taken[{{ $employee->id }}]" id="permission_taken_{{ $employee->id }}" value="{{ old('permission_taken.' . $employee->id) }}">
+                                    <input type="hidden" name="permission_reason[{{ $employee->id }}]" id="permission_reason_{{ $employee->id }}" value="{{ old('permission_reason.' . $employee->id) }}">
+                                    <input type="hidden" name="permission_from[{{ $employee->id }}]" id="permission_from_{{ $employee->id }}" value="{{ old('permission_from.' . $employee->id) }}">
+                                    <input type="hidden" name="permission_to[{{ $employee->id }}]" id="permission_to_{{ $employee->id }}" value="{{ old('permission_to.' . $employee->id) }}">
+                                    <input type="hidden" name="casual_leave[{{ $employee->id }}]" id="casual_leave_{{ $employee->id }}" value="{{ old('casual_leave.' . $employee->id) }}">
+                                    <input type="hidden" name="lop[{{ $employee->id }}]" id="lop_{{ $employee->id }}" value="{{ old('lop.' . $employee->id) }}">
+                                </td>
+                            </tr>
+                            @endforeach
+                        </tbody>
+                    </table>
+                </div>
             </div>
         </form>
 
@@ -461,6 +569,7 @@
 <script>
 (function(){
     let activeEmployeeId = null;
+    const canEditPastDates = @json($canEditPastDates ?? false);
     const permissionModalEl = document.getElementById('permissionModal');
     const halfDayModalEl = document.getElementById('halfDayModal');
     const absentModalEl = document.getElementById('absentModal');
@@ -606,6 +715,113 @@
         }
     }
 
+    function isPastDate(dateString) {
+        if (!dateString) return false;
+        const selectedDate = new Date(dateString);
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        selectedDate.setHours(0, 0, 0, 0);
+        return selectedDate < today;
+    }
+
+    function toggleViewMode(isPast) {
+        const listView = document.getElementById('attendanceListView');
+        const tableView = document.getElementById('attendanceTableView');
+        const saveBtn = document.getElementById('saveAttendanceBtn');
+
+        if (isPast && !canEditPastDates) {
+            listView.classList.add('active');
+            tableView.classList.add('hidden');
+            if (saveBtn) {
+                saveBtn.style.display = 'none';
+            }
+        } else {
+            listView.classList.remove('active');
+            tableView.classList.remove('hidden');
+            if (saveBtn) {
+                saveBtn.style.display = 'inline-block';
+            }
+        }
+    }
+
+    async function loadAttendanceListView(dateVal) {
+        const listBody = document.getElementById('attendanceListBody');
+        if (!listBody) return;
+
+        listBody.innerHTML = '<p class="text-muted text-center">Loading attendance data...</p>';
+
+        try {
+            const url = "{{ route('attendance.status-by-date') }}" + '?date=' + encodeURIComponent(dateVal);
+            const res = await fetch(url, { headers: { 'Accept': 'application/json' } });
+            const json = await res.json();
+
+            if (!json || !json.success) {
+                listBody.innerHTML = '<p class="text-muted text-center">No attendance data found for this date.</p>';
+                return;
+            }
+
+            const data = json.data || {};
+            const employees = @json($employees);
+
+            let html = '<div class="table-responsive"><table class="table table-bordered align-middle"><thead><tr><th>Emp Id</th><th>Emp Name</th><th>Branch</th><th>Attendance</th></tr></thead><tbody>';
+
+            employees.forEach(employee => {
+                const empId = employee.id.toString();
+                const attendanceData = data[empId] || {};
+                const status = attendanceData.status || 'not_marked';
+
+                // Determine which option is selected and style accordingly
+                // Only the selected status will have a class (present/absent/half) for coloring
+                // Unselected options will remain in default neutral format (no class)
+                let presentClass = '';
+                let absentClass = '';
+                let halfDayClass = '';
+                let absentText = '✗ Absent';
+
+                if (status === 'present') {
+                    presentClass = 'present'; // Only Present gets colored
+                } else if (status === 'absent') {
+                    absentClass = 'absent'; // Only Absent gets colored
+                    if (attendanceData.casual_leave === '1') {
+                        absentText = '✗ Absent (Casual Leave)';
+                    } else if (attendanceData.lop === '1') {
+                        absentText = '✗ Absent (LOP)';
+                    }
+                } else if (status === 'half_day') {
+                    halfDayClass = 'half'; // Only Half Day gets colored
+                }
+                // If status is 'not_marked', all three will show in default neutral format (no classes)
+
+                html += `
+                    <tr>
+                        <td>${employee.employee_id}</td>
+                        <td>${employee.employee_name}</td>
+                        <td>${employee.branch?.name || 'N/A'}</td>
+                        <td>
+                            <ul class="list-inline m-0 attd-pills">
+                                <li class="list-inline-item me-2">
+                                    <span class="pill ${presentClass}">✓ Present</span>
+                                </li>
+                                <li class="list-inline-item me-2">
+                                    <span class="pill ${absentClass}">${absentText}</span>
+                                </li>
+                                <li class="list-inline-item">
+                                    <span class="pill ${halfDayClass}">✗ Half Day</span>
+                                </li>
+                            </ul>
+                        </td>
+                    </tr>
+                `;
+            });
+
+            html += '</tbody></table></div>';
+            listBody.innerHTML = html || '<p class="text-muted text-center">No attendance records found for this date.</p>';
+        } catch (e) {
+            console.error('Error loading attendance list:', e);
+            listBody.innerHTML = '<p class="text-danger text-center">Error loading attendance data. Please try again.</p>';
+        }
+    }
+
     async function fetchAndApplyStatuses(){
         const dateInput = document.querySelector('input[name="attendance_date"]');
         if(!dateInput) return;
@@ -614,8 +830,22 @@
         // Clear all selections and colors when no date is selected
         if(!dateVal) {
             clearAllSelections();
+            toggleViewMode(false);
             return;
         }
+
+        // Check if date is in the past
+        const isPast = isPastDate(dateVal);
+        toggleViewMode(isPast);
+
+        if (isPast && !canEditPastDates) {
+            // Load list view for past dates
+            await loadAttendanceListView(dateVal);
+            return;
+        }
+
+        // Reset UI to the default state before applying the fetched status
+        clearAllSelections();
 
         try{
             const url = "{{ route('attendance.status-by-date') }}" + '?date=' + encodeURIComponent(dateVal);
@@ -681,50 +911,61 @@
         });
     }
 
-    // Open modals based on attendance type
+    function openAttendanceModal(radio){
+        if(!radio){ return; }
+        const type = radio.getAttribute('data-type');
+        activeEmployeeId = radio.getAttribute('data-emp-id');
+        if(!activeEmployeeId){ return; }
+
+        if(type === 'present'){
+            // Prefill permission modal for present
+            document.getElementById('perm_login_time').value = document.getElementById('login_time_'+activeEmployeeId)?.value || '';
+            document.getElementById('perm_logout_time').value = document.getElementById('logout_time_'+activeEmployeeId)?.value || '';
+            const permissionTaken = (document.getElementById('permission_taken_'+activeEmployeeId)?.value === '1');
+            document.getElementById('perm_taken_chk').checked = permissionTaken;
+            document.getElementById('perm_reason').value = document.getElementById('permission_reason_'+activeEmployeeId)?.value || '';
+            document.getElementById('perm_from').value = document.getElementById('permission_from_'+activeEmployeeId)?.value || '';
+            document.getElementById('perm_to').value = document.getElementById('permission_to_'+activeEmployeeId)?.value || '';
+
+            // Show/hide permission details based on existing value
+            const permissionDetails = document.getElementById('permission_details');
+            const permissionTimes = document.getElementById('permission_times');
+            if(permissionTaken) {
+                permissionDetails.style.display = 'block';
+                permissionTimes.style.display = 'flex';
+            } else {
+                permissionDetails.style.display = 'none';
+                permissionTimes.style.display = 'none';
+            }
+
+            document.getElementById('perm_errors').innerHTML = '';
+            showModal(permissionModalEl);
+        } else if(type === 'absent'){
+            // Show absent modal with casual leave and LOP options
+            document.getElementById('casual_leave_chk').checked = (document.getElementById('casual_leave_'+activeEmployeeId)?.value === '1');
+            document.getElementById('lop_chk').checked = (document.getElementById('lop_'+activeEmployeeId)?.value === '1');
+            document.getElementById('absent_errors').innerHTML = '';
+            showModal(absentModalEl);
+        } else if(type === 'half_day'){
+            // Prefill half day modal
+            document.getElementById('half_login_time').value = document.getElementById('login_time_'+activeEmployeeId)?.value || '';
+            document.getElementById('half_logout_time').value = document.getElementById('logout_time_'+activeEmployeeId)?.value || '';
+            const selectedHalf = document.getElementById('half_type_'+activeEmployeeId)?.value || '';
+            document.getElementById('firstHalf').checked = selectedHalf === 'first';
+            document.getElementById('secondHalf').checked = selectedHalf === 'second';
+            document.getElementById('half_errors').innerHTML = '';
+            showModal(halfDayModalEl);
+        }
+    }
+
+    // Open modals based on attendance type (new selection and re-open existing)
     document.querySelectorAll('.attendance-radio').forEach(function(radio){
         radio.addEventListener('change', function(){
-            const type = this.getAttribute('data-type');
-            activeEmployeeId = this.getAttribute('data-emp-id');
-
-            if(type === 'present'){
-                // Prefill permission modal for present
-                document.getElementById('perm_login_time').value = document.getElementById('login_time_'+activeEmployeeId)?.value || '';
-                document.getElementById('perm_logout_time').value = document.getElementById('logout_time_'+activeEmployeeId)?.value || '';
-                const permissionTaken = (document.getElementById('permission_taken_'+activeEmployeeId)?.value === '1');
-                document.getElementById('perm_taken_chk').checked = permissionTaken;
-                document.getElementById('perm_reason').value = document.getElementById('permission_reason_'+activeEmployeeId)?.value || '';
-                document.getElementById('perm_from').value = document.getElementById('permission_from_'+activeEmployeeId)?.value || '';
-                document.getElementById('perm_to').value = document.getElementById('permission_to_'+activeEmployeeId)?.value || '';
-
-                // Show/hide permission details based on existing value
-                const permissionDetails = document.getElementById('permission_details');
-                const permissionTimes = document.getElementById('permission_times');
-                if(permissionTaken) {
-                    permissionDetails.style.display = 'block';
-                    permissionTimes.style.display = 'flex';
-                } else {
-                    permissionDetails.style.display = 'none';
-                    permissionTimes.style.display = 'none';
-                }
-
-                document.getElementById('perm_errors').innerHTML = '';
-                showModal(permissionModalEl);
-            } else if(type === 'absent'){
-                // Show absent modal with casual leave and LOP options
-                document.getElementById('casual_leave_chk').checked = (document.getElementById('casual_leave_'+activeEmployeeId)?.value === '1');
-                document.getElementById('lop_chk').checked = (document.getElementById('lop_'+activeEmployeeId)?.value === '1');
-                document.getElementById('absent_errors').innerHTML = '';
-                showModal(absentModalEl);
-            } else if(type === 'half_day'){
-                // Prefill half day modal
-                document.getElementById('half_login_time').value = document.getElementById('login_time_'+activeEmployeeId)?.value || '';
-                document.getElementById('half_logout_time').value = document.getElementById('logout_time_'+activeEmployeeId)?.value || '';
-                const selectedHalf = document.getElementById('half_type_'+activeEmployeeId)?.value || '';
-                document.getElementById('firstHalf').checked = selectedHalf === 'first';
-                document.getElementById('secondHalf').checked = selectedHalf === 'second';
-                document.getElementById('half_errors').innerHTML = '';
-                showModal(halfDayModalEl);
+            openAttendanceModal(this);
+        });
+        radio.addEventListener('click', function(){
+            if(this.checked){
+                openAttendanceModal(this);
             }
         });
     });
@@ -963,22 +1204,33 @@
         const dateInputEl = document.querySelector('input[name="attendance_date"]');
     if(dateInputEl){
         dateInputEl.addEventListener('change', fetchAndApplyStatuses);
-        dateInputEl.addEventListener('input', function() {
+        dateInputEl.addEventListener('input', async function() {
             // Add/remove class based on whether date is selected
             const form = document.getElementById('attendanceForm');
-            if(this.value) {
+                if(this.value) {
                 form.classList.remove('no-date-selected');
-                // Enable radio buttons
-                document.querySelectorAll('.attendance-radio').forEach(radio => {
-                    radio.disabled = false;
-                });
-            } else {
+                const isPast = isPastDate(this.value);
+                    toggleViewMode(isPast);
+                    const readOnlyPast = isPast && !canEditPastDates;
+
+                    if (readOnlyPast) {
+                        document.querySelectorAll('.attendance-radio').forEach(radio => {
+                            radio.disabled = true;
+                        });
+                        await loadAttendanceListView(this.value);
+                    } else {
+                        document.querySelectorAll('.attendance-radio').forEach(radio => {
+                            radio.disabled = false;
+                        });
+                    }
+                } else {
                 form.classList.add('no-date-selected');
                 // Disable radio buttons
                 document.querySelectorAll('.attendance-radio').forEach(radio => {
                     radio.disabled = true;
                 });
                 clearAllSelections();
+                toggleViewMode(false);
             }
         });
 
@@ -989,8 +1241,27 @@
             document.querySelectorAll('.attendance-radio').forEach(radio => {
                 radio.disabled = true;
             });
+        } else {
+            // Check initial date
+            const isPast = isPastDate(dateInputEl.value);
+            toggleViewMode(isPast);
+            const readOnlyPast = isPast && !canEditPastDates;
+            document.querySelectorAll('.attendance-radio').forEach(radio => {
+                radio.disabled = readOnlyPast ? true : false;
+            });
         }
     }
+
+    // Prevent form submission for past dates
+    document.getElementById('attendanceForm').addEventListener('submit', function(e) {
+        const dateInput = document.querySelector('input[name="attendance_date"]');
+        if (dateInput && isPastDate(dateInput.value) && !canEditPastDates) {
+            e.preventDefault();
+            alert('Cannot save attendance for past dates. Past dates are read-only.');
+            return false;
+        }
+    });
+
     // initial load
     fetchAndApplyStatuses();
     loadInitialStatistics(); // Load initial statistics on page load
@@ -1114,7 +1385,7 @@
                 <td>${stat.casual_leaves}</td>
                 <td>${stat.lop_days}</td>
                 <td>${stat.half_days}</td>
-                <td>${stat.total_days}</td>
+                <td>${parseFloat(stat.paid_days).toFixed(2)}</td>
                 <td>${parseFloat(stat.total_salary).toFixed(2)}</td>
             `;
 
@@ -1192,3 +1463,4 @@
 })();
 </script>
 @endsection
+

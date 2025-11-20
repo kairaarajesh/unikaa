@@ -17,13 +17,14 @@ class Customer extends Model
     }
 
     protected $fillable = [
-        'customer_id', 'name', 'email', 'number', 'place', 'date', 'referral_name',
+        'customer_id', 'name', 'email', 'login_email', 'password', 'number', 'place', 'date', 'referral_name',
         'referral_number', 'referral_email', 'employee_id', 'employee_details',
-        'branch_id', 'gender', 'payment','membership_card'
+        'branch_id', 'gender', 'payment', 'membership_card', 'cash_amount', 'cash_refund_amount', 'cash_total_amount'
     ];
 
     protected $casts = [
         'date' => 'date',
+        'payment' => 'array', // Automatically converts JSON string to array when reading, array to JSON when saving
     ];
 
     /**

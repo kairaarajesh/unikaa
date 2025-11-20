@@ -92,6 +92,7 @@ Route::group(['middleware' => ['auth', 'Role'], 'roles' => ['admin']], function 
     Route::get('admin/customer/{id}/view-data', [CustomerController::class, 'viewData'])->name('customer.view-data');
     Route::get('admin/customer/{id}/bill-details', [CustomerController::class, 'billDetails'])->name('customer.bill-details');
     Route::post('admin/customer/get-by-number', [CustomerController::class, 'getCustomerByNumber'])->name('customer.get-by-number');
+    Route::post('admin/customer/get-employees-by-branch', [CustomerController::class, 'getEmployeesByBranch'])->name('customer.get-employees-by-branch');
     Route::post('admin/customer/update-membership-card', [CustomerController::class, 'updateMembershipCard'])->name('customer.update-membership-card');
     Route::resource('/schedule', '\App\Http\Controllers\ScheduleController');
     // Route::resource('/customer_management', '\App\Http\Controllers\ScheduleController');

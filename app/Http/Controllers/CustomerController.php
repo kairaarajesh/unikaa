@@ -222,6 +222,20 @@ class CustomerController extends Controller
             'aggregate_total_amount' => 'required|numeric|min:0',
         ]);
 
+        // Normalize payment if it's provided in the request
+        $paymentMethod = $customer->payment;
+        if ($request->has('payment') && is_array($request->input('payment'))) {
+            $paymentMethod = array_map(function($payment) {
+                $normalized = strtolower(trim($payment));
+                // Handle special cases - normalize "Debit card / Credit card" to "card"
+                if (strpos($normalized, 'debit') !== false || strpos($normalized, 'credit') !== false) {
+                    return 'card';
+                }
+                return $normalized;
+            }, array_filter($request->input('payment')));
+            $paymentMethod = array_values(array_unique($paymentMethod));
+        }
+
         // Create invoice record instead of storing in customer
         $invoice = Invoice::create([
             'customer_id' => $customer->id,
@@ -236,7 +250,7 @@ class CustomerController extends Controller
             'subtotal' => round($validated['aggregate_amount'], 2),
             'service_tax_amount' => round($validated['aggregate_tax'], 2),
             'service_total_calculation' => round($validated['aggregate_total_amount'], 2),
-            'payment_method' => $customer->payment,
+            'payment_method' => $paymentMethod,
             'branch_id' => $customer->branch_id,
             'employee_id' => $customer->employee_id,
             'employee_details' => $customer->employee_details,
@@ -286,7 +300,8 @@ class CustomerController extends Controller
             'employee_id' => 'nullable|exists:employees,id',
             'employee_details' => 'nullable|string|max:500',
             'gender' => 'nullable|in:Male,Female',
-            'payment' => 'nullable|string|max:100',
+            'payment' => 'nullable|array',
+            'payment.*' => 'nullable|string|max:100',
             'service_items' => 'required',
             'purchase_items' => 'nullable',
         ];
@@ -300,9 +315,27 @@ class CustomerController extends Controller
 
         Log::info('Validation passed, processing data');
 
+        // Normalize payment array to lowercase format like ["cash","paytm"]
+        if (isset($validatedData['payment']) && is_array($validatedData['payment'])) {
+            $validatedData['payment'] = array_map(function($payment) {
+                // Convert to lowercase and normalize format
+                $normalized = strtolower(trim($payment));
+                // Handle special cases - normalize "Debit card / Credit card" to "card"
+                if (strpos($normalized, 'debit') !== false || strpos($normalized, 'credit') !== false) {
+                    return 'card';
+                }
+                return $normalized;
+            }, array_filter($validatedData['payment'])); // Remove empty values
+            // Remove duplicates and re-index
+            $validatedData['payment'] = array_values(array_unique($validatedData['payment']));
+        } else {
+            $validatedData['payment'] = [];
+        }
+
         // Additional debugging
         Log::info('Service items JSON:', ['service_items' => $request->input('service_items')]);
         Log::info('Purchase items JSON:', ['purchase_items' => $request->input('purchase_items')]);
+        Log::info('Payment normalized:', ['payment' => $validatedData['payment']]);
 
         // Process service items data - handle different formats
         $serviceItemsRaw = $request->input('service_items');
@@ -566,7 +599,7 @@ class CustomerController extends Controller
             'subtotal' => round($serviceTotalNet, 2),
             'service_tax_amount' => round($serviceTaxTotal, 2),
             'service_total_calculation' => round($serviceTotalAfterTax, 2),
-            'payment_method' => $validatedData['payment'],
+            'payment_method' => $validatedData['payment'], // Already normalized array
             'branch_id' => $validatedData['branch_id'],
             'employee_id' => $validatedData['employee_id'],
             'employee_details' => $validatedData['employee_details'],
@@ -598,11 +631,15 @@ class CustomerController extends Controller
 
         // Generate PDF invoice using the invoice data
         try {
+            // Increase memory limit for PDF generation
+            ini_set('memory_limit', '512M');
+            ini_set('max_execution_time', 300);
+
             $pdf = Pdf::loadView('admin.customer_show', ['customer' => $customer, 'invoice' => $invoice]);
             $todayDate = Carbon::now()->format('d-m-y');
 
             // Return PDF download directly with success message
-            return $pdf->download('invoice_' . $invoice->invoice_number . '_' . $todayDate . '.pdf')
+            return $pdf->download('UNIKAA INVOICE_' . $invoice->invoice_number . '_' . $todayDate . '.pdf')
                 ->with('success', $successMessage);
         } catch (\Exception $e) {
             Log::error('PDF generation failed: ' . $e->getMessage());
@@ -736,6 +773,10 @@ class CustomerController extends Controller
 
     public function generateInvoice($id)
     {
+        // Increase memory limit for PDF generation
+        ini_set('memory_limit', '512M');
+        ini_set('max_execution_time', 300);
+
         $customer = Customer::with('invoices')->findOrFail($id);
         $user = auth()->user();
         if ($user && method_exists($user, 'roles') && $user->roles()->where('slug', 'subadmin')->exists()) {
@@ -761,6 +802,10 @@ class CustomerController extends Controller
      */
     public function viewInvoice($id)
     {
+        // Increase memory limit for PDF generation
+        ini_set('memory_limit', '512M');
+        ini_set('max_execution_time', 300);
+
         $customer = Customer::with('invoices')->findOrFail($id);
         // Subadmin can only view invoices within their branch
         $user = auth()->user();
@@ -779,7 +824,7 @@ class CustomerController extends Controller
         $data = ['customer' => $customer, 'invoice' => $invoice];
         $pdf = Pdf::loadView('admin/customer_show', $data);
 
-        return $pdf->stream('invoice_' . $invoice->invoice_number . '.pdf');
+        return $pdf->stream('UNIKAA INVOICE_' . $invoice->invoice_number . '.pdf');
     }
 
     /**
@@ -787,6 +832,10 @@ class CustomerController extends Controller
      */
     public function downloadInvoiceById($invoiceId)
     {
+        // Increase memory limit for PDF generation
+        ini_set('memory_limit', '512M');
+        ini_set('max_execution_time', 300);
+
         $invoice = Invoice::with('customer')->findOrFail($invoiceId);
         $customer = $invoice->customer;
 
@@ -802,7 +851,7 @@ class CustomerController extends Controller
         $pdf = Pdf::loadView('admin.customer_show', $data);
         $todayDate = Carbon::now()->format('d-m-y');
 
-        return $pdf->download('invoice_' . $invoice->invoice_number . '_' . $todayDate . '.pdf');
+        return $pdf->download('UNIKAA INVOICE_' . $invoice->invoice_number . '_' . $todayDate . '.pdf');
     }
 
     /**
@@ -810,6 +859,10 @@ class CustomerController extends Controller
      */
     public function viewInvoiceById($invoiceId)
     {
+        // Increase memory limit for PDF generation
+        ini_set('memory_limit', '512M');
+        ini_set('max_execution_time', 300);
+
         $invoice = Invoice::with('customer')->findOrFail($invoiceId);
         $customer = $invoice->customer;
 
@@ -824,7 +877,7 @@ class CustomerController extends Controller
         $data = ['customer' => $customer, 'invoice' => $invoice];
         $pdf = Pdf::loadView('admin.customer_show', $data);
 
-        return $pdf->stream('invoice_' . $invoice->invoice_number . '.pdf');
+        return $pdf->stream('UNIKAA INVOICE_' . $invoice->invoice_number . '.pdf');
     }
 
     /**
@@ -847,10 +900,20 @@ class CustomerController extends Controller
             abort(404, 'No invoice found for this customer');
         }
 
+        // Increase memory limit for PDF generation
+        ini_set('memory_limit', '512M');
+        ini_set('max_execution_time', 300);
+
         $data = ['customer' => $customer, 'invoice' => $invoice];
         $pdf = Pdf::loadView('admin/customer_show', $data);
         $todayDate = Carbon::now()->format('d-m-y');
-        $filename = 'invoice_' . $invoice->invoice_number . '_' . $todayDate . '.pdf';
+        $filename = 'UNIKAA INVOICE_' . $invoice->invoice_number . '_' . $todayDate . '.pdf';
+
+        // Ensure temp directory exists
+        $tempDir = storage_path('app/temp');
+        if (!file_exists($tempDir)) {
+            mkdir($tempDir, 0755, true);
+        }
 
         $pdfPath = storage_path('app/temp/' . $filename);
         $pdf->save($pdfPath);
@@ -874,6 +937,10 @@ class CustomerController extends Controller
      */
     public function generateCustomInvoice(Request $request, $id)
     {
+        // Increase memory limit for PDF generation
+        ini_set('memory_limit', '512M');
+        ini_set('max_execution_time', 300);
+
         $customer = Customer::with('invoices')->findOrFail($id);
         // Subadmin can only generate/view custom invoices within their branch
         $user = auth()->user();
@@ -901,9 +968,9 @@ class CustomerController extends Controller
         $todayDate = Carbon::now()->format('d-m-y');
 
         if ($request->get('action') === 'download') {
-            return $pdf->download('invoice_' . $invoice->invoice_number . '_' . $todayDate . '.pdf');
+            return $pdf->download('UNIKAA INVOICE' . $invoice->invoice_number . '_' . $todayDate . '.pdf');
         } else {
-            return $pdf->stream('invoice_' . $invoice->invoice_number . '.pdf');
+            return $pdf->stream('UNIKAA INVOICE_' . $invoice->invoice_number . '.pdf');
         }
     }
 
@@ -1102,5 +1169,40 @@ class CustomerController extends Controller
         $customer->save();
 
         return redirect()->route('customer.index')->with('success', 'Membership card updated successfully for ' . $customer->name . ' (' . $customer->number . ').');
+    }
+
+    /**
+     * Get employees by branch ID for dropdown
+     */
+    public function getEmployeesByBranch(Request $request)
+    {
+        $request->validate([
+            'branch_id' => 'required|exists:branches,id'
+        ]);
+
+        $user = auth()->user();
+        $branchId = $request->branch_id;
+
+        // Query employees by branch_id
+        $employeesQuery = Employees::where('branch_id', $branchId);
+
+        // Subadmin can only access employees from their branch
+        if ($user && method_exists($user, 'roles') && $user->roles()->where('slug', 'subadmin')->exists()) {
+            if (isset($user->branch_id) && $branchId != $user->branch_id) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Unauthorized access to this branch'
+                ], 403);
+            }
+        }
+
+        $employees = $employeesQuery->select('id', 'employee_name', 'employee_id', 'branch_id')
+            ->orderBy('employee_name', 'asc')
+            ->get();
+
+        return response()->json([
+            'success' => true,
+            'employees' => $employees
+        ]);
     }
 }

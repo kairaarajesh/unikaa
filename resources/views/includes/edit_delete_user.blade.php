@@ -1,3 +1,12 @@
+@php
+    $authUser = auth()->user();
+    $permissionMeta = checkUserPermissions($authUser);
+    $authPermissions = $permissionMeta['permissions'];
+    $authHasFullAccess = $permissionMeta['hasFullAccess'];
+    $canModifySubadmin = $authHasFullAccess || hasPermission($authPermissions, 'subadmin', 'write');
+@endphp
+
+@if($canModifySubadmin)
 <!-- Edit -->
 <div class="modal fade" id="edit{{ $user->id }}">
     <div class="modal-dialog">
@@ -61,6 +70,42 @@
                                             <input type="checkbox" class="custom-control-input" id="employees_write{{ $user->id }}" name="permissions_detail[employees][write]" value="1"
                                                 {{ isset($userPermissions['employees_detail']['write']) ? 'checked' : '' }}>
                                             <label class="custom-control-label" for="employees_write{{ $user->id }}">Writing Access</label>
+                                        </div>
+                                    </div>
+
+                                    <div class="custom-control custom-checkbox mt-3">
+                                        <input type="checkbox" class="custom-control-input" id="employee_list{{ $user->id }}" name="permissions[]" value="employee_list"
+                                            {{ isset($userPermissions['employee_list']) ? 'checked' : '' }}>
+                                        <label class="custom-control-label" for="employee_list{{ $user->id }}">Employee List</label>
+                                    </div>
+                                    <div id="employee_list-details{{ $user->id }}" class="ml-4 mt-2" style="display: {{ isset($userPermissions['employee_list']) ? 'block' : 'none' }};">
+                                        <div class="custom-control custom-checkbox">
+                                            <input type="checkbox" class="custom-control-input" id="employee_list_read{{ $user->id }}" name="permissions_detail[employee_list][read]" value="1"
+                                                {{ isset($userPermissions['employee_list_detail']['read']) ? 'checked' : '' }}>
+                                            <label class="custom-control-label" for="employee_list_read{{ $user->id }}">Reading Access</label>
+                                        </div>
+                                        <div class="custom-control custom-checkbox">
+                                            <input type="checkbox" class="custom-control-input" id="employee_list_write{{ $user->id }}" name="permissions_detail[employee_list][write]" value="1"
+                                                {{ isset($userPermissions['employee_list_detail']['write']) ? 'checked' : '' }}>
+                                            <label class="custom-control-label" for="employee_list_write{{ $user->id }}">Writing Access</label>
+                                        </div>
+                                    </div>
+
+                                    <div class="custom-control custom-checkbox mt-3">
+                                        <input type="checkbox" class="custom-control-input" id="attendance{{ $user->id }}" name="permissions[]" value="attendance"
+                                            {{ isset($userPermissions['attendance']) ? 'checked' : '' }}>
+                                        <label class="custom-control-label" for="attendance{{ $user->id }}">Attendance</label>
+                                    </div>
+                                    <div id="attendance-details{{ $user->id }}" class="ml-4 mt-2" style="display: {{ isset($userPermissions['attendance']) ? 'block' : 'none' }};">
+                                        <div class="custom-control custom-checkbox">
+                                            <input type="checkbox" class="custom-control-input" id="attendance_read{{ $user->id }}" name="permissions_detail[attendance][read]" value="1"
+                                                {{ isset($userPermissions['attendance_detail']['read']) ? 'checked' : '' }}>
+                                            <label class="custom-control-label" for="attendance_read{{ $user->id }}">Reading Access</label>
+                                        </div>
+                                        <div class="custom-control custom-checkbox">
+                                            <input type="checkbox" class="custom-control-input" id="attendance_write{{ $user->id }}" name="permissions_detail[attendance][write]" value="1"
+                                                {{ isset($userPermissions['attendance_detail']['write']) ? 'checked' : '' }}>
+                                            <label class="custom-control-label" for="attendance_write{{ $user->id }}">Writing Access</label>
                                         </div>
                                     </div>
 
@@ -208,7 +253,7 @@
                                     <div class="custom-control custom-checkbox">
                                         <input type="checkbox" class="custom-control-input" id="settings{{ $user->id }}" name="permissions[]" value="settings"
                                             {{ isset($userPermissions['settings']) ? 'checked' : '' }}>
-                                        <label class="custom-control-label" for="settings{{ $user->id }}">Manage Settings</label>
+                                        <label class="custom-control-label" for="settings{{ $user->id }}">Product</label>
                                     </div>
                                     <!-- Settings detailed permissions -->
                                     <div id="settings-details{{ $user->id }}" class="ml-4 mt-2" style="display: {{ isset($userPermissions['settings']) ? 'block' : 'none' }};">
@@ -370,6 +415,8 @@ document.addEventListener('DOMContentLoaded', function() {
     setupPermissionCheckbox('bookings{{ $user->id }}', 'booking-details{{ $user->id }}');
     setupPermissionCheckbox('services{{ $user->id }}', 'services-details{{ $user->id }}');
     setupPermissionCheckbox('subadmin{{ $user->id }}', 'subadmin-details{{ $user->id }}');
+    setupPermissionCheckbox('employee_list{{ $user->id }}', 'employee_list-details{{ $user->id }}');
+    setupPermissionCheckbox('attendance{{ $user->id }}', 'attendance-details{{ $user->id }}');
     setupPermissionCheckbox('billing{{ $user->id }}', 'billing-details{{ $user->id }}');
     setupPermissionCheckbox('bill_table{{ $user->id }}', 'bill_table-details{{ $user->id }}');
     setupPermissionCheckbox('reports{{ $user->id }}', 'reports-details{{ $user->id }}');
@@ -381,3 +428,4 @@ document.addEventListener('DOMContentLoaded', function() {
     setupPermissionCheckbox('trainer{{ $user->id }}', 'trainer-details{{ $user->id }}');
 });
 </script>
+@endif

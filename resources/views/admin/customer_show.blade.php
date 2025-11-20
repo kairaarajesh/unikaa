@@ -104,14 +104,13 @@
 
     <div class="receipt">
         <div class="center">
-            <img src="https://unikaabeauty.com/assets/Unikaa-logo-tap-Bfnk1bCP.png" alt="Logo" style="height:32px;margin-bottom:4px;">
+            <img src="https://res.cloudinary.com/dspp2vqid/image/upload/w_200,h_64,c_limit,q_auto,f_auto/v1763190132/picknowcrm/ol37ycat5une3kzyttdo.png" alt="Logo" style="height:50px;margin-bottom:10px;">
             <div class="lg">UNIKAA</div>
-            <div class="xs muted">India's No.1 hair and beauty salon</div>
-            <div class="xs muted">Branch:  {{ $customer->branch?->name ?? 'N/A' }} | {{ $customer->place }}</div>
-            <div class="xs">Phone: 7092770399</div>
+            <div class="xs muted" style="text-transform: uppercase;">India's No.1 hair and beauty salon</div>
+            <div class="xs muted" style="text-transform: uppercase;">BRANCH:  {{ $customer->branch?->name ?? 'N/A' }} | {{ $customer->place }}</div>
+            <div class="xs">PHONE: 7092770399</div>
             <div class="xs">GSTIN: 33AAIFU3741Q1ZO</div>
         </div>
-
         <div class="line"></div>
 
         <div class="sm">
@@ -119,7 +118,19 @@
             <div class="pair"><span>Mobile</span><b>:                {{ $customer->number }}</b></div>
             <div class="pair"><span>Bill No</span><b>:            #{{ $invoiceData->id ?? $customer->id }}</b></div>
             <div class="pair"><span>Date</span><b>:                     {{ ($invoiceData->date ?? $customer->date) ? \Carbon\Carbon::parse($invoiceData->date ?? $customer->date)->format('d-m-Y') : \Carbon\Carbon::now()->format('d-m-Y H:i') }}</b></div>
-            <div class="pair"><span>Payment Method</span><b>:           {{ $invoiceData->payment_method ?? $customer->payment }}</b></div>
+            @php
+                $payment = $invoiceData->payment_method ?? $customer->payment;
+                if (is_string($payment) && is_array(json_decode($payment, true))) {
+                    $payment = implode(', ', json_decode($payment, true));
+                } elseif (is_array($payment)) {
+                    $payment = implode(', ', $payment);
+                }
+            @endphp
+
+            <div class="pair">
+                <span>Payment Method</span><b>: {{ $payment }}</b>
+            </div>
+            {{-- <div class="pair"><span>Payment Method</span><b>:           {{ $invoiceData->payment_method ?? $customer->payment }}</b></div> --}}
         </div>
 
         <div class="line"></div>

@@ -48,65 +48,53 @@
                                         <th data-priority="3">Name</th>
                                         <th data-priority="4">Email</th>
                                         <th data-priority="5">Phone</th>
+                                         <th data-priority="7">Gender</th>
+                                        <th data-priority="5">Service Name</th>
+                                        <th data-priority="5">Service Price</th>
+                                        <th data-priority="5">serviceCategory</th>
                                         <th data-priority="6">Location</th>
-                                        <th data-priority="7">Gender</th>
-                                        <th data-priority="8">Service</th>
                                         <th data-priority="9">date</th>
                                         <th data-priority="9">time</th>
                                         <th>Status</th>
-                                        <th>Action</th>
+                                        <th data-priority="9">Stylist</th>
                                     </tr>
                                 </thead>
-                                <tbody>
-                                    @foreach ($bookings as $booking)
+                             <tbody>
+                                    @forelse ($bookings as $index => $booking)
                                         <tr>
                                             <td>{{ $loop->iteration }}</td>
-                                            <td> {{ $booking->name }} </td>
-                                            <td> {{ $booking->email }} </td>
-                                            <td> {{ $booking->phone }} </td>
-                                            <td> {{ $booking->location }} </td>
-                                            <td> {{ $booking->gender }} </td>
-                                            <td> {{ $booking->service }} </td>
-                                            <td> {{ $booking->date }} </td>
-                                            <td> {{ $booking->time }} </td>
+                                            <td>{{ $booking['customerName'] ?? 'N/A' }}</td>
+                                            <td>{{ $booking['email'] ?? 'N/A' }}</td>
+                                            <td>{{ $booking['phone'] ?? 'N/A' }}</td>
+                                            <td>{{ $booking['gender'] ?? 'N/A' }}</td>
+                                            <td>{{ $booking['serviceName'] ?? 'N/A' }}</td>
+                                            <td>{{ $booking['servicePrice'] ?? 'N/A' }}</td>
+                                            <td>{{ $booking['serviceCategory'] ?? 'N/A' }}</td>
+                                            <td>{{ $booking['location'] ?? 'N/A' }}</td>
                                             <td>
-                                                @if(empty($booking->status))
-                                                    Not Selected
+                                                @if(!empty($booking['date']))
+                                                    {{ \Carbon\Carbon::parse($booking['date'])->format('Y M d') }}
                                                 @else
-                                                    {{ $booking->status }}
-                                                    @if($booking->status === 'Service Completed' && $booking->artist)
-                                                        <br>
-                                                        @php
-                                                            // If artist is stored as ID, fetch the name
-                                                            $artist = null;
-                                                            if (is_numeric($booking->artist)) {
-                                                                $artist = \App\Models\Employees::find($booking->artist);
-                                                            }
-                                                        @endphp
-                                                        @if($artist)
-                                                            <small>Artist: {{ $artist->employee_name }} (ID: {{ $artist->employee_id }})</small>
-                                                        @else
-                                                            <small>Artist: {{ $booking->artist }}</small>
-                                                        @endif
-                                                    @endif
+                                                    N/A
                                                 @endif
                                             </td>
-                                            @php
-                                            $user = auth()->user();
-                                        @endphp
-
-                                        @if($user && $user->role != 1  && $user->role != 2 && $user->role != 3 && $user->role != 4 && $user->role != 5 && $user->role != 6 && $user->role != 7 && $user->role != 8 && $user->role != 9 && $user->role != 10)
-
+                                            <td>{{ $booking['time'] ?? 'N/A' }}</td>
                                             <td>
-                                                {{-- <a href="{{ url('admin/booking_show/' . $booking->id) }}" class="btn btn-sm btn-warning">
-                                                    <i class="fa fa-print me-1"></i> Print
-                                                </a> --}}
-                                                <a href="#edit{{$booking->id}}" data-toggle="modal" class="btn btn-success btn-sm edit btn-flat"><i class='fa fa-edit'></i> Edit</a>
-                                                <a href="#delete{{$booking->id}}" data-toggle="modal" class="btn btn-danger btn-sm delete btn-flat"><i class='fa fa-trash'></i> Delete</a>
+                                                {{ $booking['status'] ?? 'Not Selected' }}
+                                                @if(isset($booking['status']) && $booking['status'] === 'Service Completed' && !empty($booking['stylist']))
+                                                    <br>
+                                                    {{-- <small>Artist: {{ $booking['stylist'] }}</small> --}}
+                                                @endif
                                             </td>
-                                            @endif
+                                            <td>{{ $booking['stylist'] ?? 'N/A' }}</td>
                                         </tr>
-                                    @endforeach
+                                    @empty
+                                        <tr>
+                                            <td colspan="12" class="text-center text-muted">
+                                                No bookings available or failed to connect to API.
+                                            </td>
+                                        </tr>
+                                    @endforelse
                                 </tbody>
                             </table>
                         </div>
@@ -117,7 +105,7 @@
     </div>
 
 @foreach ($bookings as $booking)
-@include('includes.edit_delete_booking')
+{{-- @include('includes.edit_delete_booking') --}}
 @endforeach
 {{-- @include('includes.edit_delete_booking') --}}
 @endsection

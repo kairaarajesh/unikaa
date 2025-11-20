@@ -13,4 +13,5 @@ class Branch extends Model
         'name','place','address','number','email','gst_no'
     ];
 
+    
 }

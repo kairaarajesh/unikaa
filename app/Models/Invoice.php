@@ -19,6 +19,7 @@ class Invoice extends Model
     protected $casts = [
         'service_items' => 'array',
         'purchase_items' => 'array',
+        'payment_method' => 'array', // Automatically converts JSON string to array when reading, array to JSON when saving
         'date' => 'datetime',
         'amount' => 'decimal:2',
         'tax' => 'decimal:2',

@@ -12,8 +12,53 @@ use Illuminate\Support\Facades\Validator;
 
 class UserController extends Controller
 {
+    /**
+     * Ensure the authenticated user has access to subadmin management.
+     *
+     * @param  string|null  $access
+     * @return void
+     */
+    protected function ensureSubadminPermission(?string $access = null): void
+    {
+        $user = auth()->user();
+
+        if (!$user) {
+            abort(403, 'Unauthorized.');
+        }
+
+        $userPermissions = checkUserPermissions($user);
+
+        if ($userPermissions['hasFullAccess']) {
+            return;
+        }
+
+        $permissions = $userPermissions['permissions'];
+
+        if (!hasPermission($permissions, 'subadmin')) {
+            abort(403, 'Unauthorized.');
+        }
+
+        if ($access !== null) {
+            $details = $permissions['subadmin_detail'] ?? null;
+
+            if ($access === 'write') {
+                if (empty($details['write'])) {
+                    abort(403, 'Unauthorized.');
+                }
+            } elseif ($access === 'read') {
+                $hasReadAccess = $details === null || !empty($details['read']) || !empty($details['write']);
+
+                if (!$hasReadAccess) {
+                    abort(403, 'Unauthorized.');
+                }
+            }
+        }
+    }
+
     public function index()
     {
+        $this->ensureSubadminPermission('read');
+
         $users = User::with('roles')->get();
         $Branch = Branch::all();
         return view('admin.user', compact('users','Branch'));
@@ -21,6 +66,8 @@ class UserController extends Controller
 
     public function store(Request $request)
     {
+        $this->ensureSubadminPermission('write');
+
         $this->validate($request, [
             // 'name' => 'string|required',
             'branch_id' => 'required|exists:branches,id',
@@ -77,6 +124,8 @@ class UserController extends Controller
 
     public function edit($id)
     {
+        $this->ensureSubadminPermission('read');
+
         $user = User::find($id);
 
         if (!$user) {
@@ -87,6 +136,8 @@ class UserController extends Controller
 
     public function update(UserRec $request, int $id)
     {
+        $this->ensureSubadminPermission('write');
+
         // Validate request
         $validated = $request->validated();
 
@@ -137,6 +188,8 @@ class UserController extends Controller
 
     public function destroy($id)
     {
+        $this->ensureSubadminPermission('write');
+
         $user = User::findOrFail($id);
         $user->delete();
 

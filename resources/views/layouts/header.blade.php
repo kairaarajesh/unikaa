@@ -48,32 +48,57 @@
         </li>
 
         <!-- notification -->
-        <li class="dropdown notification-list">
+    <li class="dropdown notification-list">
             <a class="nav-link dropdown-toggle arrow-none waves-effect" data-toggle="dropdown" href="#" role="button" aria-haspopup="false" aria-expanded="false">
                 <i class="mdi mdi-bell-outline noti-icon"></i>
-                {{-- <span class="badge badge-pill badge-danger noti-icon-badge">{{$data[8]}}</span> --}}
+                @if(isset($bookings) && count($bookings) > 0)
+                    <span class="badge badge-pill badge-danger noti-icon-badge">{{ count($bookings) }}</span>
+                @endif
             </a>
-            <div class="dropdown-menu dropdown-menu-right dropdown-menu-lg">
-                   {{-- <h6 class="dropdown-item-text">
-                        Notifications ({{$data[8]}})
-                    </h6> --}}
-                {{-- <div class="slimscroll notification-item-list">
-                    @foreach ($employeeName as $employee)<hr>
-                    <a href="javascript:void(0);" class="dropdown-item notify-item active" onclick="handleClick(this, '{{ $employee->name }}')">
-                        <div class=""></div><button type="button" class="close" aria-label="Close">
-                            <span aria-hidden="true">&times;</span>
-                        </button>
-                        <p class="notify-details">{{ $employee->name }}<span class="text-muted">{{ $employee->category }}</span><span class="text-muted">{{ $employee->number }}</span></p>
-                        @endforeach
-                    </a>
-                </div> --}}
 
-                <!-- All-->
-                <a href="javascript:void(0);" class="dropdown-item text-center text-primary">
-                        View all <i class="fi-arrow-right"></i>
-                    </a>
+       <div class="dropdown-menu dropdown-menu-right dropdown-menu-lg">
+            <div class="p-3">
+                <h6 class="m-0 text-primary">Today & Tomorrow’s Bookings</h6>
             </div>
-        </li>
+
+            <div class="dropdown-divider"></div>
+
+            @forelse($bookings as $booking)
+                <a href="javascript:void(0);" class="dropdown-item notify-item">
+                    <div class="notify-icon bg-primary">
+                        <i class="mdi mdi-account"></i>
+                    </div>
+                    <p class="notify-details mb-0">
+                        <strong>{{ $booking['customerName'] ?? 'Unknown' }}</strong>
+                        <small class="text-muted d-block">
+                            📞 {{ $booking['phone'] ?? 'N/A' }} | {{ $booking['gender'] ?? 'N/A' }}
+                        </small>
+                        <small class="d-block">
+                            💇 {{ $booking['serviceName'] ?? 'Service' }}
+                        </small>
+                        <small class="text-muted d-block">
+                            📍 {{ $booking['location'] ?? 'N/A' }}
+                        </small>
+                        <small class="text-muted">
+                            📅 {{ \Carbon\Carbon::parse($booking['date'])->format('Y M d') }}
+                            - ⏰ {{ $booking['time'] ?? 'N/A' }}
+                        </small>
+                    </p>
+                </a>
+            @empty
+                <div class="dropdown-item text-center text-muted">
+                    No bookings for today or tomorrow.
+                </div>
+            @endforelse
+
+            <div class="dropdown-divider"></div>
+
+            <a href="{{ url('admin/bookings') }}" class="dropdown-item text-center text-primary">
+                View all <i class="fi-arrow-right"></i>
+            </a>
+        </div>
+    </li>
+
         <li class="dropdown notification-list">
             <div class="dropdown notification-list nav-pro-img">
                 <a class="dropdown-toggle nav-link arrow-none waves-effect nav-user" data-toggle="dropdown" href="#" role="button" aria-haspopup="false" aria-expanded="false">

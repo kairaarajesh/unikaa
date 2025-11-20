@@ -39,7 +39,7 @@
                                                 <table id="datatable-buttons" class="table table-striped table-bordered nowrap" style="border-collapse: collapse; border-spacing: 0; width: 100%;">
                                                 <thead>
                         <tr>
-                            <th data-priority="1">ID</th>
+                            {{-- <th data-priority="1">ID</th> --}}
                             <th data-priority="2">Branch Name</th>
                             <th data-priority="2">Branch Place</th>
                             <th data-priority="2">Email</th>
@@ -51,31 +51,51 @@
                     <tbody>
                         @foreach($users as $user)
                         <tr>
-                            <td>{{ $loop->iteration }}</td>
-                            <td class="text-center">
-                                <span class="btn btn-success btn-m m-2">{{ $user->branch?->name ?? 'N/A' }}</span>
+                           <td class="text-center">
+                                {{-- Show user name only if it exists --}}
+                                @if(!empty($user->name))
+                                    <span class="btn btn-info btn-sm m-1">
+                                        {{ $user->name }}
+                                    </span>
+                                @endif
+
+                                {{-- Show branch name only if it exists --}}
+                                @if(!empty($user->branch?->name))
+                                    <span class="btn btn-success btn-sm m-1">
+                                        {{ $user->branch->name }}
+                                    </span>
+                                @endif
+
                             </td>
-                            <td class="scroll-x">
-                                {{ $user->place }}
+                           <td>
+                                <div class="overflow-auto" style="max-height: 80px; white-space: normal;">
+                                    {{ $user->place }}
+                                </div>
                             </td>
                             <td>{{$user->email}}</td>
-                            <td>
-                                @if($user->permissions)
-                                    @foreach(json_decode($user->permissions, true) as $permission => $value)
-                                        @if($value)
-                                            <span class="badge badge-primary">{{ ucfirst($permission) }}</span>
-                                        @endif
-                                    @endforeach
-                                @endif
+                           <td>
+                                <div class="overflow-auto" style="max-height: 100px; white-space: normal;">
+                                    @if($user->permissions)
+                                        @foreach(json_decode($user->permissions, true) as $permission => $value)
+                                            @if($value)
+                                                <span class="badge badge-primary d-inline-block mb-1">{{ ucfirst($permission) }}</span>
+                                            @endif
+                                        @endforeach
+                                    @endif
+                                </div>
                             </td>
                             <td>{{$user->created_at}}</td>
                             <td>
-                                <a href="#edit{{ $user->id }}" data-toggle="modal" class="btn btn-success btn-sm edit btn-flat">
-                                    <i class='fa fa-edit'></i> Edit
-                                </a>
-                                <a href="#delete{{ $user->id }}" data-toggle="modal" class="btn btn-danger btn-sm delete btn-flat">
-                                    <i class='fa fa-trash'></i> Delete
-                                </a>
+                                @if(empty($user->name))
+                                    <a href="#edit{{ $user->id }}" data-toggle="modal" class="btn btn-success btn-sm edit btn-flat">
+                                        <i class='fa fa-edit'></i> Edit
+                                    </a>
+                                    <a href="#delete{{ $user->id }}" data-toggle="modal" class="btn btn-danger btn-sm delete btn-flat">
+                                        <i class='fa fa-trash'></i> Delete
+                                    </a>
+                                @else
+                                    <span class="text-muted">Not Available</span>
+                                @endif
                             </td>
                         </tr>
                         @endforeach
@@ -92,7 +112,9 @@
                         </div>
 
 @foreach($users as $user)
-    @include('includes.edit_delete_user')
+    @if(empty($user->name))
+        @include('includes.edit_delete_user')
+    @endif
 @endforeach
 @include('includes.add_user')
 @endsection

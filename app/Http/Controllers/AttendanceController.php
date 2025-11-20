@@ -16,7 +16,15 @@ class AttendanceController extends Controller
 {
     public function index()
     {
-        return view('admin.attendance')->with(['employees' => Employees::all()]);
+        $employees = $this->scopedEmployeesQuery()
+            ->with('branch')
+            ->orderBy('employee_name')
+            ->get();
+
+        return view('admin.attendance')->with([
+            'employees' => $employees,
+            'canEditPastDates' => $this->canEditPastDates(),
+        ]);
     }
 
     public function CheckStore(Request $request)
@@ -28,6 +36,30 @@ class AttendanceController extends Controller
         ]);
 
         $date = $request->input('attendance_date');
+
+        $allowPastEditing = $this->canEditPastDates();
+        // Check if date is in the past and has permission - if so, prevent editing
+        $isPastDate = Carbon::parse($date)->isPast() && Carbon::parse($date)->format('Y-m-d') < Carbon::now()->format('Y-m-d');
+        if ($isPastDate && !$allowPastEditing) {
+            // Check if any attendance record for this date has permission
+            $hasPermission = false;
+            try {
+                if (Schema::hasColumn('attendances', 'permission_taken')) {
+                    $hasPermission = Attendance::where('attendance_date', $date)
+                        ->whereNotNull('permission_taken')
+                        ->where('permission_taken', '!=', '0')
+                        ->where('permission_taken', '!=', '')
+                        ->exists();
+                }
+            } catch (\Exception $e) {
+                // Column may not exist, skip check
+            }
+
+            if ($hasPermission) {
+                return back()->withErrors(['attendance_date' => 'Cannot edit attendance for past dates with permission. These dates are read-only.']);
+            }
+        }
+
         $attendanceSelections = (array) $request->input('attendance', []);
         $loginTimes = (array) $request->input('login_time', []);
         $logoutTimes = (array) $request->input('logout_time', []);
@@ -40,7 +72,7 @@ class AttendanceController extends Controller
         $permissionTo = (array) $request->input('permission_to', []);
 
         foreach ($attendanceSelections as $employeeId => $status) {
-            $employee = Employees::whereId($employeeId)->first();
+            $employee = $this->findScopedEmployee($employeeId);
             if (!$employee) {
                 continue;
             }
@@ -305,6 +337,32 @@ class AttendanceController extends Controller
             $date = $validated['attendance_date'];
             $status = $validated['status'];
 
+            $allowPastEditing = $this->canEditPastDates();
+            // Check if date is in the past and has permission - if so, prevent editing
+            $isPastDate = Carbon::parse($date)->isPast() && Carbon::parse($date)->format('Y-m-d') < Carbon::now()->format('Y-m-d');
+            if ($isPastDate && !$allowPastEditing) {
+                // Check if any attendance record for this date has permission
+                $hasPermission = false;
+                try {
+                    if (Schema::hasColumn('attendances', 'permission_taken')) {
+                        $hasPermission = Attendance::where('attendance_date', $date)
+                            ->whereNotNull('permission_taken')
+                            ->where('permission_taken', '!=', '0')
+                            ->where('permission_taken', '!=', '')
+                            ->exists();
+                    }
+                } catch (\Exception $e) {
+                    // Column may not exist, skip check
+                }
+
+                if ($hasPermission) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Cannot edit attendance for past dates with permission. These dates are read-only.'
+                    ], 403);
+                }
+            }
+
             $loginTime = isset($validated['login_time']) && $validated['login_time'] !== ''
                 ? $validated['login_time'] . ':00'
                 : null;
@@ -312,7 +370,7 @@ class AttendanceController extends Controller
                 ? $validated['logout_time'] . ':00'
                 : null;
 
-            $employee = Employees::whereId($employeeId)->first();
+            $employee = $this->findScopedEmployee($employeeId);
             if (!$employee) {
                 return response()->json(['success' => false, 'message' => 'Employee not found'], 404);
             }
@@ -487,7 +545,7 @@ class AttendanceController extends Controller
 
         // If no date provided, return empty result
         if (!$date) {
-            return response()->json(['success' => true, 'data' => []]);
+            return response()->json(['success' => true, 'data' => [], 'has_permission' => false]);
         }
 
         $trimTime = function ($time) {
@@ -503,7 +561,8 @@ class AttendanceController extends Controller
         };
 
         $result = [];
-        $employees = Employees::all(['id']);
+        $hasAnyPermission = false;
+        $employees = $this->scopedEmployeesQuery()->get(['id']);
         foreach ($employees as $emp) {
             $empId = (int) $emp->id;
 
@@ -545,7 +604,14 @@ class AttendanceController extends Controller
                 // Times and permission info if available
                 try { $payload['login_time'] = $trimTime($attendance->login_time ?? $attendance->attendance_time ?? null); } catch (\Throwable $e) {}
                 try { $payload['logout_time'] = $trimTime($attendance->logout_time ?? $attendance->leave_time ?? null); } catch (\Throwable $e) {}
-                try { $payload['permission_taken'] = ($attendance->permission_taken ?? '0') ? '1' : '0'; } catch (\Throwable $e) {}
+                try {
+                    $permissionTaken = ($attendance->permission_taken ?? '0');
+                    $payload['permission_taken'] = $permissionTaken ? '1' : '0';
+                    // Check if permission exists (not null and not '0')
+                    if ($permissionTaken && $permissionTaken !== '0' && $permissionTaken !== '') {
+                        $hasAnyPermission = true;
+                    }
+                } catch (\Throwable $e) {}
                 try { $payload['permission_reason'] = $attendance->permission_reason ?? null; } catch (\Throwable $e) {}
                 try { $payload['permission_from'] = $trimTime($attendance->permission_from ?? null); } catch (\Throwable $e) {}
                 try { $payload['permission_to'] = $trimTime($attendance->permission_to ?? null); } catch (\Throwable $e) {}
@@ -566,7 +632,11 @@ class AttendanceController extends Controller
             }
         }
 
-        return response()->json(['success' => true, 'data' => $result]);
+        return response()->json([
+            'success' => true,
+            'data' => $result,
+            'has_permission' => $hasAnyPermission
+        ]);
     }
 
     public function getStatistics(Request $request)
@@ -602,7 +672,7 @@ class AttendanceController extends Controller
             ], 400);
         }
 
-        $query = Employees::query();
+        $query = $this->scopedEmployeesQuery();
 
         if ($employeeId) {
             $query->where('id', $employeeId);
@@ -694,6 +764,7 @@ class AttendanceController extends Controller
                 'casual_leaves' => $casualLeaveCount,
                 'lop_days' => $lopCount,
                 'half_days' => $halfDayCount,
+                'total_days' => $totalDays,
                 'paid_days' => $paidDays,
                 'total_salary' => $totalSalary
             ];
@@ -758,8 +829,8 @@ class AttendanceController extends Controller
         // Get all attendance records for today
         $todayAttendance = Attendance::where('attendance_date', $today)->get();
 
-        // Get all employees
-        $employees = Employees::all(['id', 'employee_id', 'employee_name', 'salary']);
+        // Get all employees (respect branch scope)
+        $employees = $this->scopedEmployeesQuery()->get(['id', 'employee_id', 'employee_name', 'salary']);
 
         $debugData = [];
 
@@ -927,5 +998,66 @@ class AttendanceController extends Controller
                     'end' => $now->copy()->endOfMonth()->format('Y-m-d')
                 ];
         }
+    }
+
+    /**
+     * Build a scoped employees query that respects branch permissions.
+     */
+    private function scopedEmployeesQuery()
+    {
+        $query = Employees::query();
+        $user = auth()->user();
+
+        if ($this->shouldRestrictToBranch($user)) {
+            $query->where('branch_id', $user->branch_id);
+        }
+
+        return $query;
+    }
+
+    /**
+     * Fetch a single employee while enforcing branch scope.
+     */
+    private function findScopedEmployee($employeeId)
+    {
+        if (!$employeeId) {
+            return null;
+        }
+
+        return $this->scopedEmployeesQuery()
+            ->where('id', $employeeId)
+            ->first();
+    }
+
+    /**
+     * Determine whether the authenticated user can edit past attendance dates.
+     */
+    private function canEditPastDates(): bool
+    {
+        $user = auth()->user();
+        if (!$user) {
+            return false;
+        }
+
+        // Only allow when the permissions column is explicitly null
+        return !isset($user->permissions) || is_null($user->permissions);
+    }
+
+    /**
+     * Determine if the authenticated user should be limited to a specific branch.
+     */
+    private function shouldRestrictToBranch($user = null)
+    {
+        $user = $user ?: auth()->user();
+
+        if (!$user || !$user->branch_id) {
+            return false;
+        }
+
+        if (!method_exists($user, 'roles')) {
+            return false;
+        }
+
+        return $user->roles()->where('slug', 'subadmin')->exists();
     }
 }
