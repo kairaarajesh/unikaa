@@ -47,15 +47,15 @@ class BranchController extends Controller
         $this->validate($request, [
             'name' => 'string|required',
             'place' => 'string|nullable',
-            'address' => 'string|required',
-            'number' => 'string|required',
-            'email' => 'string|required',
+            'address' => 'string|nullable',
+            'number' => 'string|nullable',
+            'email' => 'string|nullable',
             'gst_no' => 'string|required',
         ]);
 
         $branch = Branch::findOrFail($id);
         $branch->name = $request->name;
-        $branch->place = $request->place;
+        // $branch->place = $request->place;
         $branch->address = $request->address;
         $branch->number = $request->number;
         $branch->email = $request->email;

@@ -33,36 +33,36 @@
 
                         @php($authUser = auth()->user())
 
-@if($authUser && method_exists($authUser, 'roles')
-    && $authUser->roles()->where('slug', 'subadmin')->exists()
-    && isset($authUser->branch_id))
+                    @if($authUser && method_exists($authUser, 'roles')
+                        && $authUser->roles()->where('slug', 'subadmin')->exists()
+                        && isset($authUser->branch_id))
 
-    @php($userBranch = $Branch->where('id', $authUser->branch_id)->first())
+                        @php($userBranch = $Branch->where('id', $authUser->branch_id)->first())
 
-    <div class="form-group">
-        <label class="col-sm-6 control-label">Branch</label>
-        <input
-            type="text"
-            class="form-control"
-            value="{{ $userBranch->name ?? 'N/A' }}"
-            name="branch_name"
-            readonly
-        >
-    </div>
+                        <div class="form-group">
+                            <label class="col-sm-6 control-label">Branch</label>
+                            <input
+                                type="text"
+                                class="form-control"
+                                value="{{ $userBranch->name ?? 'N/A' }}"
+                                name="branch_name"
+                                readonly
+                            >
+                        </div>
 
-    <div class="form-group">
-        <label for="placeSelect" class="col-sm-5 control-label">Place</label>
-        <input
-            type="text"
-            class="form-control"
-            id="branch-info-place"
-            name="place"
-            value="{{ $userBranch->place ?? $userBranch->address ?? 'N/A' }}"
-            readonly
-        >
-    </div>
-
+        <div class="form-group">
+            <label for="placeSelect" class="col-sm-5 control-label">Place</label>
+            <input
+                type="text"
+                class="form-control"
+                id="branch-info-place"
+                name="place"
+                value="{{ $userBranch->place ?? $userBranch->address ?? 'N/A' }}"
+                readonly
+            >
+        </div>
 @else
+
     <div class="form-group">
         <label for="branch_id" class="col-sm-6 control-label">Branch</label>
         <select class="select select2 form-control" id="branch_id" name="branch_id">

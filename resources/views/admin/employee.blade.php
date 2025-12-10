@@ -35,6 +35,13 @@
     </div>
 @endif
 <!--End showing Validation Errors here-->
+@php
+    $user = auth()->user();
+    $userPermissions = checkUserPermissions($user);
+    $permissions = $userPermissions['permissions'];
+    $hasFullAccess = $userPermissions['hasFullAccess'];
+    $canViewSalary = $hasFullAccess || hasPermission($permissions, 'salary');
+@endphp
                     <div class="row">
                         <div class="col-12">
                             <div class="card">
@@ -52,17 +59,13 @@
                                                         <th data-priority="2">Branch</th>
                                                         <th data-priority="2">Join Date</th>
                                                         <th data-priority="2">Position</th>
+                                                        @if($canViewSalary)
                                                         <th data-priority="2">Salary</th>
+                                                        @endif
                                                         <th data-priority="2">Gender</th>
-                                                        @php
-                                                        $user = auth()->user();
-                                                        $userPermissions = checkUserPermissions($user);
-                                                        $permissions = $userPermissions['permissions'];
-                                                        $hasFullAccess = $userPermissions['hasFullAccess'];
-                                                    @endphp
-                                                    @if($hasFullAccess || hasPermission($permissions, 'employees'))
-                                                    <th>Action</th>
-                                                    @endif
+                                                        @if($hasFullAccess || hasPermission($permissions, 'employees'))
+                                                        <th>Action</th>
+                                                        @endif
                                                     </tr>
                                                     </thead>
                                                     <tbody>
@@ -77,15 +80,11 @@
                                                           <td>{{ $employee->branch?->name ?? 'N/A' }}</td>
                                                             <td>{{$employee->joining_date}}</td>
                                                            <td>{{$employee->position}}</td>
+                                                            @if($canViewSalary)
                                                             <td>{{$employee->salary}}</td>
+                                                            @endif
                                                             <td>{{$employee->gender}}</td>
                                                             {{-- <td>{{$employee->employee_status}}</td> --}}
-                                                            @php
-                                                            $user = auth()->user();
-                                                            $userPermissions = checkUserPermissions($user);
-                                                            $permissions = $userPermissions['permissions'];
-                                                            $hasFullAccess = $userPermissions['hasFullAccess'];
-                                                        @endphp
 
                                                         @if($hasFullAccess || hasPermission($permissions, 'employees'))
 

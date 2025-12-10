@@ -1,5 +1,12 @@
 <!-- Edit Employee Modal -->
 <div class="modal fade" id="edit{{ $employee->id }}">
+@php
+    $user = auth()->user();
+    $userPermissions = checkUserPermissions($user);
+    $permissions = $userPermissions['permissions'];
+    $hasFullAccess = $userPermissions['hasFullAccess'];
+    $canViewSalary = $hasFullAccess || hasPermission($permissions, 'salary');
+@endphp
     <div class="modal-dialog">
         <div class="modal-content">
             <div class="modal-header">
@@ -36,7 +43,7 @@
                         <input type="text" name="employee_id" class="form-control" value="{{ $employee->employee_id }}">
                     </div>
 
-                     <div class="form-group">
+                       <div class="form-group">
                             <label for="name">Branch</label>
                                     <select class="select select2s-hidden-accessible form-control @error('branch_id') is-invalid @enderror" id="branch_id" name="branch_id">
                                     <option value="">Select Branch</option>
@@ -168,6 +175,7 @@
                     <div class="form-group">
                         <input type="text" name="position" class="form-control" value="{{ $employee->position }}">
                     </div>
+                     @if($canViewSalary)
                     <label for="experience">Salary</label>
                      <div class="form-group">
                         <input type="number" name="salary" class="form-control @error('salary') is-invalid @enderror" value="{{ old('salary', $employee->salary) }}">
@@ -175,6 +183,7 @@
                             <span class="invalid-feedback d-block">{{ $message }}</span>
                         @enderror
                     </div>
+                     @endif
 
                     {{-- <div class="form-group">
                         <label>Employee Status</label>
@@ -255,6 +264,13 @@
 </div>
 
 <div class="modal fade" id="view{{ $employee->id }}">
+@php
+    $user = auth()->user();
+    $userPermissions = checkUserPermissions($user);
+    $permissions = $userPermissions['permissions'];
+    $hasFullAccess = $userPermissions['hasFullAccess'];
+    $canViewSalary = $hasFullAccess || hasPermission($permissions, 'salary');
+@endphp
     <div class="modal-dialog modal-lg">
         <div class="modal-content">
             <div class="modal-header">
@@ -286,7 +302,9 @@
                                 </td>
                             </tr>
                             <tr><th>Position</th><td>{{ $employee->position }}</td></tr>
+                             @if($canViewSalary)
                             <tr><th>Salary</th><td>{{ $employee->salary }}</td></tr>
+                             @endif
                             <tr><th>Gender</th><td>{{ $employee->gender }}</td></tr>
                             <tr><th>DOB</th><td>{{ $employee->dob }}</td></tr>
                             <tr><th>Age</th><td>{{ $employee->age }}</td></tr>

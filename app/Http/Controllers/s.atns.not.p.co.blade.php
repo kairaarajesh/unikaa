@@ -24,10 +24,6 @@ class AttendanceController extends Controller
         return view('admin.attendance')->with([
             'employees' => $employees,
             'canEditPastDates' => $this->canEditPastDates(),
-            // How many days back (from today) non-full-admins (e.g. subadmin) can still edit in table mode.
-            // 0  = only today/future
-            // 2  = today, yesterday and day-before-yesterday, etc.
-            'maxDaysBackEditable' => $this->maxDaysBackEditable(),
         ]);
     }
 
@@ -1045,34 +1041,6 @@ class AttendanceController extends Controller
 
         // Only allow when the permissions column is explicitly null
         return !isset($user->permissions) || is_null($user->permissions);
-    }
-
-    /**
-     * Max number of days back the current user can still edit in full table/radio format.
-     *
-     * - Full admins (canEditPastDates = true): effectively unlimited (handled in JS by the flag itself).
-     * - Subadmins: allow editing up to 2 days in the past (today and previous 2 days).
-     * - Other roles: no past editing (only today / future).
-     */
-    private function maxDaysBackEditable(): int
-    {
-        $user = auth()->user();
-        if (!$user) {
-            return 0;
-        }
-
-        // If user is a full admin, frontend will already allow all past dates via canEditPastDates.
-        if ($this->canEditPastDates()) {
-            return 0; // JS will ignore this when canEditPastDates is true
-        }
-
-        // Subadmin: allow editing up to 2 days back
-        if (method_exists($user, 'hasRole') && $user->hasRole('subadmin')) {
-            return 2;
-        }
-
-        // Other roles: cannot edit past dates
-        return 0;
     }
 
     /**

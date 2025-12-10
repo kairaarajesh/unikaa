@@ -66,7 +66,9 @@
                             </select>
                         </div> --}}
                         <div class="form-group">
-                            <label>Permissions</label>
+                            {{-- <label>Permissions</label> --}}
+                               <h6 class="text-muted">Salon Permissions:</h6>
+
                             <div class="row">
                                 <div class="col-md-6">
                                     <div class="custom-control custom-checkbox">
@@ -130,7 +132,6 @@
                                             <label class="custom-control-label" for="customers_write">Writing Access</label>
                                         </div>
                                     </div>
-
                                     <div class="custom-control custom-checkbox">
                                         <input type="checkbox" class="custom-control-input" id="services" name="permissions[]" value="services">
                                         <label class="custom-control-label" for="services">Manage Services</label>
@@ -163,7 +164,7 @@
                                         </div>
                                     </div>
 
-                                    <div class="custom-control custom-checkbox">
+                                    {{-- <div class="custom-control custom-checkbox">
                                         <input type="checkbox" class="custom-control-input" id="subadmin" name="permissions[]" value="subadmin">
                                         <label class="custom-control-label" for="subadmin">Subadmin Permission</label>
                                     </div>
@@ -177,12 +178,12 @@
                                             <input type="checkbox" class="custom-control-input" id="subadmin_write" name="permissions_detail[subadmin][write]" value="1">
                                             <label class="custom-control-label" for="subadmin_write">Writing Access</label>
                                         </div>
-                                    </div>
+                                    </div> --}}
                                 </div>
                                 <div class="col-md-6">
                                     <div class="custom-control custom-checkbox">
                                         <input type="checkbox" class="custom-control-input" id="billing" name="permissions[]" value="billing">
-                                        <label class="custom-control-label" for="billing">Manage Billing</label>
+                                        <label class="custom-control-label" for="billing">Sales Report</label>
                                     </div>
                                     <!-- Billing detailed permissions -->
                                     <div id="billing-details" class="ml-4 mt-2" style="display: none;">
@@ -213,34 +214,34 @@
                                     </div>
 
                                     <div class="custom-control custom-checkbox">
-                                        <input type="checkbox" class="custom-control-input" id="reports" name="permissions[]" value="reports">
-                                        <label class="custom-control-label" for="reports">View Reports</label>
+                                        <input type="checkbox" class="custom-control-input" id="product_list" name="permissions[]" value="product_list">
+                                        <label class="custom-control-label" for="product_list">Product list</label>
                                     </div>
-                                    <!-- Reports detailed permissions -->
-                                    <div id="reports-details" class="ml-4 mt-2" style="display: none;">
+                                    <!-- product_list detailed permissions -->
+                                    <div id="product_list-details" class="ml-4 mt-2" style="display: none;">
                                         <div class="custom-control custom-checkbox">
-                                            <input type="checkbox" class="custom-control-input" id="reports_read" name="permissions_detail[reports][read]" value="1">
-                                            <label class="custom-control-label" for="reports_read">Reading Access</label>
+                                            <input type="checkbox" class="custom-control-input" id="product_list_read" name="permissions_detail[product_list][read]" value="1">
+                                            <label class="custom-control-label" for="product_list_read">Reading Access</label>
                                         </div>
                                         <div class="custom-control custom-checkbox">
-                                            <input type="checkbox" class="custom-control-input" id="reports_write" name="permissions_detail[reports][write]" value="1">
-                                            <label class="custom-control-label" for="reports_write">Writing Access</label>
+                                            <input type="checkbox" class="custom-control-input" id="product_list_write" name="permissions_detail[product_list][write]" value="1">
+                                            <label class="custom-control-label" for="product_list_write">Writing Access</label>
                                         </div>
                                     </div>
 
                                     <div class="custom-control custom-checkbox">
-                                        <input type="checkbox" class="custom-control-input" id="settings" name="permissions[]" value="settings">
-                                        <label class="custom-control-label" for="settings">Product</label>
+                                        <input type="checkbox" class="custom-control-input" id="brand" name="permissions[]" value="brand">
+                                        <label class="custom-control-label" for="brand">Product brand</label>
                                     </div>
-                                    <!-- Settings detailed permissions -->
-                                    <div id="settings-details" class="ml-4 mt-2" style="display: none;">
+                                    <!-- brand detailed permissions -->
+                                    <div id="brand-details" class="ml-4 mt-2" style="display: none;">
                                         <div class="custom-control custom-checkbox">
-                                            <input type="checkbox" class="custom-control-input" id="settings_read" name="permissions_detail[settings][read]" value="1">
-                                            <label class="custom-control-label" for="settings_read">Reading Access</label>
+                                            <input type="checkbox" class="custom-control-input" id="brand_read" name="permissions_detail[brand][read]" value="1">
+                                            <label class="custom-control-label" for="brand_read">Reading Access</label>
                                         </div>
                                         <div class="custom-control custom-checkbox">
-                                            <input type="checkbox" class="custom-control-input" id="settings_write" name="permissions_detail[settings][write]" value="1">
-                                            <label class="custom-control-label" for="settings_write">Writing Access</label>
+                                            <input type="checkbox" class="custom-control-input" id="brand_write" name="permissions_detail[brand][write]" value="1">
+                                            <label class="custom-control-label" for="brand_write">Writing Access</label>
                                         </div>
                                     </div>
 
@@ -357,8 +358,9 @@ document.addEventListener('DOMContentLoaded', function() {
     setupPermissionCheckbox('attendance', 'attendance-details');
     setupPermissionCheckbox('billing', 'billing-details');
     setupPermissionCheckbox('bill_table', 'bill_table-details');
-    setupPermissionCheckbox('reports', 'reports-details');
-    setupPermissionCheckbox('settings', 'settings-details');
+    setupPermissionCheckbox('product_list', 'product_list-details');
+    setupPermissionCheckbox('brand', 'brand-details');
+    setupPermissionCheckbox('branch', 'branch-details');
 
     // Setup Academy sub-permissions
     setupPermissionCheckbox('student', 'student-details');

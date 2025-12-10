@@ -77,7 +77,8 @@
                             💇 {{ $booking['serviceName'] ?? 'Service' }}
                         </small>
                         <small class="text-muted d-block">
-                            📍 {{ $booking['location'] ?? 'N/A' }}
+                            📍 {{ $booking['location'] ?? 'N/A' }} </br>
+                            🏢 {{ $booking['branchLocation'] ?? 'N/A' }}
                         </small>
                         <small class="text-muted">
                             📅 {{ \Carbon\Carbon::parse($booking['date'])->format('Y M d') }}
@@ -93,9 +94,9 @@
 
             <div class="dropdown-divider"></div>
 
-            <a href="{{ url('admin/bookings') }}" class="dropdown-item text-center text-primary">
+            {{-- <a href="{{ url('admin/bookings') }}" class="dropdown-item text-center text-primary">
                 View all <i class="fi-arrow-right"></i>
-            </a>
+            </a> --}}
         </div>
     </li>
 

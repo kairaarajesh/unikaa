@@ -28,9 +28,11 @@ class ManagemenRec extends FormRequest
             'product_code'=>'string|required',
             'Quantity'=>'string|required',
             'price'=>'required|numeric',
-            'branch'=>'string|required',
+            // 'branch'=>'string|required',
             'date'=>'string|required',
             'category_id' => 'required|exists:categories,id',
+            'branch_id' => 'nullable|exists:branches,id',
         ];
     }
 }
+

@@ -48,7 +48,7 @@
                             <small class="text-muted">Leave blank to keep current password</small>
                         </div>
                         <div class="form-group">
-                            <label>Permissions</label>
+                               <h6 class="text-muted">Salon Permissions:</h6>
                             @php
                                 $userPermissions = json_decode($user->permissions, true) ?? [];
                             @endphp
@@ -190,7 +190,7 @@
                                     <div class="custom-control custom-checkbox">
                                         <input type="checkbox" class="custom-control-input" id="billing{{ $user->id }}" name="permissions[]" value="billing"
                                             {{ isset($userPermissions['billing']) ? 'checked' : '' }}>
-                                        <label class="custom-control-label" for="billing{{ $user->id }}">Manage Billing</label>
+                                        <label class="custom-control-label" for="billing{{ $user->id }}">Sales Report</label>
                                     </div>
                                     <!-- Billing detailed permissions -->
                                     <div id="billing-details{{ $user->id }}" class="ml-4 mt-2" style="display: {{ isset($userPermissions['billing']) ? 'block' : 'none' }};">
@@ -234,7 +234,7 @@
                                     <div class="custom-control custom-checkbox">
                                         <input type="checkbox" class="custom-control-input" id="reports{{ $user->id }}" name="permissions[]" value="reports"
                                             {{ isset($userPermissions['reports']) ? 'checked' : '' }}>
-                                        <label class="custom-control-label" for="reports{{ $user->id }}">View Reports</label>
+                                        <label class="custom-control-label" for="reports{{ $user->id }}">Product list</label>
                                     </div>
                                     <!-- Reports detailed permissions -->
                                     <div id="reports-details{{ $user->id }}" class="ml-4 mt-2" style="display: {{ isset($userPermissions['reports']) ? 'block' : 'none' }};">
@@ -251,21 +251,21 @@
                                     </div>
 
                                     <div class="custom-control custom-checkbox">
-                                        <input type="checkbox" class="custom-control-input" id="settings{{ $user->id }}" name="permissions[]" value="settings"
-                                            {{ isset($userPermissions['settings']) ? 'checked' : '' }}>
-                                        <label class="custom-control-label" for="settings{{ $user->id }}">Product</label>
+                                        <input type="checkbox" class="custom-control-input" id="brand{{ $user->id }}" name="permissions[]" value="brand"
+                                            {{ isset($userPermissions['brand']) ? 'checked' : '' }}>
+                                        <label class="custom-control-label" for="brand{{ $user->id }}">Product brand</label>
                                     </div>
-                                    <!-- Settings detailed permissions -->
-                                    <div id="settings-details{{ $user->id }}" class="ml-4 mt-2" style="display: {{ isset($userPermissions['settings']) ? 'block' : 'none' }};">
+                                    <!-- brand detailed permissions -->
+                                    <div id="brand-details{{ $user->id }}" class="ml-4 mt-2" style="display: {{ isset($userPermissions['brand']) ? 'block' : 'none' }};">
                                         <div class="custom-control custom-checkbox">
-                                            <input type="checkbox" class="custom-control-input" id="settings_read{{ $user->id }}" name="permissions_detail[settings][read]" value="1"
-                                                {{ isset($userPermissions['settings_detail']['read']) ? 'checked' : '' }}>
-                                            <label class="custom-control-label" for="settings_read{{ $user->id }}">Reading Access</label>
+                                            <input type="checkbox" class="custom-control-input" id="brand_read{{ $user->id }}" name="permissions_detail[brand][read]" value="1"
+                                                {{ isset($userPermissions['brand_detail']['read']) ? 'checked' : '' }}>
+                                            <label class="custom-control-label" for="brand_read{{ $user->id }}">Reading Access</label>
                                         </div>
                                         <div class="custom-control custom-checkbox">
-                                            <input type="checkbox" class="custom-control-input" id="settings_write{{ $user->id }}" name="permissions_detail[settings][write]" value="1"
-                                                {{ isset($userPermissions['settings_detail']['write']) ? 'checked' : '' }}>
-                                            <label class="custom-control-label" for="settings_write{{ $user->id }}">Writing Access</label>
+                                            <input type="checkbox" class="custom-control-input" id="brand_write{{ $user->id }}" name="permissions_detail[brand][write]" value="1"
+                                                {{ isset($userPermissions['brand_detail']['write']) ? 'checked' : '' }}>
+                                            <label class="custom-control-label" for="brand_write{{ $user->id }}">Writing Access</label>
                                         </div>
                                     </div>
 

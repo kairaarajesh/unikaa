@@ -61,45 +61,62 @@
                                 @endphp
 
                              @if($canViewEmployeeMenu)
-    <li class="{{ $employeeMenuOpen ? 'mm-active' : '' }}">
-        <a href="javascript:void(0);"
-           class="waves-effect {{ $employeeMenuOpen ? 'active' : '' }}"
-           aria-expanded="{{ $employeeMenuOpen ? 'true' : 'false' }}">
+                                <li class="{{ $employeeMenuOpen ? 'mm-active' : '' }}">
+                                    <a href="javascript:void(0);"
+                                    class="waves-effect {{ $employeeMenuOpen ? 'active' : '' }}"
+                                    aria-expanded="{{ $employeeMenuOpen ? 'true' : 'false' }}">
 
-            <i class="ti-user"></i>
-            <span>
-                Employees
-                <span class="float-right menu-arrow">
-                    <i class="mdi mdi-chevron-right"></i>
-                </span>
-            </span>
-        </a>
+                                        <i class="ti-user"></i>
+                                        <span>
+                                            Employees
+                                            <span class="float-right menu-arrow">
+                                                <i class="mdi mdi-chevron-right"></i>
+                                            </span>
+                                        </span>
+                                    </a>
 
-        <ul class="submenu" style="{{ $employeeMenuOpen ? 'display:block;' : '' }}">
+                                    <ul class="submenu" style="{{ $employeeMenuOpen ? 'display:block;' : '' }}">
 
-            @if($canAccessEmployeeList)
-                <li>
-                    <a href="/employees"
-                       class="waves-effect {{ request()->is('employees') || request()->is('employees/*') ? 'mm active' : '' }}">
-                        <i class="dripicons-view-apps"></i>
-                        <span>Employees List</span>
-                    </a>
-                </li>
-            @endif
+                                        @if($canAccessEmployeeList)
+                                            <li>
+                                                <a href="/employees"
+                                                class="waves-effect {{ request()->is('employees') || request()->is('employees/*') ? 'mm active' : '' }}">
+                                                    <i class="dripicons-view-apps"></i>
+                                                    <span>Employees List</span>
+                                                </a>
+                                            </li>
+                                        @endif
 
-            @if($canAccessAttendance)
-                <li>
-                    <a href="/attendance"
-                       class="waves-effect {{ request()->is('attendance') || request()->is('attendance/*') ? 'mm active' : '' }}">
-                        <i class="ti-calendar"></i>
-                        <span>Attendance</span>
-                    </a>
-                </li>
-            @endif
+                                        @if($canAccessAttendance)
+                                            <li>
+                                                <a href="/attendance"
+                                                class="waves-effect {{ request()->is('attendance') || request()->is('attendance/*') ? 'mm active' : '' }}">
+                                                    <i class="ti-calendar"></i>
+                                                    <span>Attendance</span>
+                                                </a>
+                                            </li>
+                                        @endif
+                                        </ul>
+                                    </li>
+                                @endif
 
-        </ul>
-    </li>
-@endif
+                                @if($hasFullAccess || hasPermission($permissions, 'customers'))
+                                    <li>
+                                        <a href="/customer" class="waves-effect {{ request()->is("customer") || request()->is("customer/*") ? "mm active" : "" }}">
+                                            <i class="ti-stats-up"></i>
+                                            <span>Customer</span>
+                                        </a>
+                                    </li>
+                                @endif
+
+                                 {{-- @if($hasFullAccess || hasPermission($permissions, 'customers')) --}}
+                                    <li>
+                                        <a href="/staffservice" class="waves-effect {{ request()->is("staffservice") || request()->is("staffservice/*") ? "mm active" : "" }}">
+                                            <i class="ti-stats-up"></i>
+                                            <span>StaffService</span>
+                                        </a>
+                                    </li>
+                                {{-- @endif --}}
 
                              {{-- @if($hasFullAccess || hasPermission($permissions, 'billing'))
                                 <li>
@@ -149,20 +166,18 @@
                             {{-- <li class="">
                                 <a href="/customer_management" class="waves-effect {{ request()->is("Customer management") || request()->is("/customer management/*") ? "mm active" : "" }}"><i class="ti-user"></i><span>Customer Management</span></a>
                             </li> --}}
-                            @if($hasFullAccess || hasPermission($permissions, 'settings'))
+
+                            @if($hasFullAccess || hasPermission($permissions, 'product_list'))
                             <li class="">
                                 <a href="/management" class="waves-effect {{ request()->is("management") || request()->is("/management/*") ? "mm active" : "" }}"><i class="fa fa-users" aria-hidden="true"></i><span>Product List</span></a>
                             </li>
                             @endif
-                            {{-- @endif<i class="fa fa-users" aria-hidden="true"></i>
-                            @php $user = auth()->user(); @endphp
-                            @if($user && ($user->hasRole('admin') || ($user->hasRole('1')))) --}}
-                            {{-- @if($hasFullAccess || hasPermission($permissions, 'settings')) --}}
+
+                            @if($hasFullAccess || hasPermission($permissions, 'brand'))
                             <li>
                                 <a href="/category" class="waves-effect {{ request()->is("category") || request()->is("/category/*") ? "mm active" : "" }}"><i class="ti-layout-grid2"></i><span>Product Brand</span></a>
                             </li>
-                            {{-- @endif --}}
-                            {{-- @endif --}}
+                            @endif
 
                             {{-- @php $user = auth()->user(); @endphp
                             @if($user && ($user->hasRole('admin') || ($user->hasRole('1'))))

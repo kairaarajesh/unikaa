@@ -9,6 +9,7 @@ use App\Models\ServiceManagement;
 use App\Models\Management;
 use App\Models\Employees;
 use App\Models\Invoice;
+use App\Models\ServiceCombo;
 
 class BillController extends Controller
 {
@@ -21,6 +22,7 @@ class BillController extends Controller
          $employees = Employees::all();
          $customer = Customer::all();
          $invoice = Invoice::all();
+         $serviceCombos = ServiceCombo::all();
         //  Duplicate fetch removed
         $date = $request->input('date');
         $number = $request->input('number');
@@ -80,7 +82,7 @@ class BillController extends Controller
             'customers' => $customers,
         ];
 
-        $extraData = compact('employees', 'services', 'managements', 'Branch','customer', 'invoice');
+        $extraData = compact('employees', 'services', 'managements', 'Branch','customer', 'invoice', 'serviceCombos');
 
         return view('admin.bill', array_merge($baseData, $extraData));
     }

@@ -45,6 +45,11 @@ class Customer extends Model
             return $this->belongsTo(Branch::class, 'branch_id');
         }
 
+         public function employee()
+        {
+            return $this->belongsTo(Employees::class, 'employee_id');
+        }
+
         public function customer()
         {
             return $this->belongsTo(Customer::class, 'customer_id');

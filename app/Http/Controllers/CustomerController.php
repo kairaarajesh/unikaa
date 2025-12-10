@@ -23,20 +23,31 @@ use App\Models\ServiceManagement;
 use Illuminate\Support\Facades\DB;
 use App\Models\Management; // added
 use App\Models\Invoice;
+use App\Models\ServiceCombo;
 
 class CustomerController extends Controller
 {
       public function index(Request $request)
     {
         $user = auth()->user();
+        $permissionsPayload = $user
+            ? checkUserPermissions($user)
+            : ['permissions' => [], 'hasFullAccess' => false];
+        $permissions = $permissionsPayload['permissions'];
+        $hasFullAccess = $permissionsPayload['hasFullAccess'];
+        $isSubadmin = $user && method_exists($user, 'roles') && $user->roles()->where('slug', 'subadmin')->exists();
+        $canViewBranchDetails = $hasFullAccess
+            || hasPermission($permissions, 'branches', 'read')
+            || hasPermission($permissions, 'branches')
+            || $isSubadmin;
         $customersQuery = Customer::query();
         $employeesQuery = Employees::query();
 
         // Optional filters: number, membership_card, custom date range (mm/dd/yyyy)
         $filterNumber = trim((string)$request->get('number'));
         $filterCard = trim((string)$request->get('membership_card'));
-        $rawStart = $request->get('start_date'); // expected mm/dd/yyyy
-        $rawEnd = $request->get('end_date');     // expected mm/dd/yyyy
+        $rawStart = $request->get('start_date');
+        $rawEnd = $request->get('end_date');
 
         if ($filterNumber !== '') {
             $customersQuery->where('number', 'like', "%$filterNumber%");
@@ -145,7 +156,8 @@ class CustomerController extends Controller
         $customers = $customersQuery->with(['branch', 'invoices'])->get();
         $employees = $employeesQuery->get();
         $services = ServiceManagement::all();
-        $managements = Management::all();
+        $managements = Management::with('categories')->get();
+        $serviceCombos = ServiceCombo::all();
 
         // Branch options for the form: subadmin sees only their branch
         if ($user && method_exists($user, 'roles') && $user->roles()->where('slug', 'subadmin')->exists() && isset($user->branch_id)) {
@@ -191,7 +203,13 @@ class CustomerController extends Controller
             return $customer;
         });
 
-        return view('admin.customer', compact('customers', 'employees', 'services', 'managements', 'period','Branch','startDate','endDate'));
+        // Get user branch for subadmin users
+        $userBranch = null;
+        if ($user && method_exists($user, 'roles') && $user->roles()->where('slug', 'subadmin')->exists() && isset($user->branch_id)) {
+            $userBranch = Branch::find($user->branch_id);
+        }
+
+        return view('admin.customer', compact('customers', 'employees', 'services', 'managements', 'serviceCombos', 'period','Branch','startDate','endDate', 'user', 'userBranch', 'canViewBranchDetails'));
     }
 
     /**
@@ -252,8 +270,8 @@ class CustomerController extends Controller
             'service_total_calculation' => round($validated['aggregate_total_amount'], 2),
             'payment_method' => $paymentMethod,
             'branch_id' => $customer->branch_id,
-            'employee_id' => $customer->employee_id,
-            'employee_details' => $customer->employee_details,
+            // 'employee_id' => $customer->employee_id,
+            // 'employee_details' => $customer->employee_details,
         ]);
 
         return redirect()->route('customer.index')->with('success', 'Invoice created for customer #' . $customer->id);
@@ -297,12 +315,12 @@ class CustomerController extends Controller
             'number' => 'required|digits:10',
             'place' => 'nullable|string|max:255',
             'date' => 'nullable|string',
-            'employee_id' => 'nullable|exists:employees,id',
-            'employee_details' => 'nullable|string|max:500',
+            // 'employee_id' => 'nullable|exists:employees,id',
+            // 'employee_details' => 'nullable|string|max:500',
             'gender' => 'nullable|in:Male,Female',
             'payment' => 'nullable|array',
             'payment.*' => 'nullable|string|max:100',
-            'service_items' => 'required',
+            'service_items' => 'nullable',
             'purchase_items' => 'nullable',
         ];
 
@@ -365,11 +383,18 @@ class CustomerController extends Controller
                 if (!is_array($item)) { return false; }
                 $name = isset($item['service_name']) ? trim((string)$item['service_name']) : '';
                 $amount = isset($item['amount']) ? (float)$item['amount'] : 0.0;
-                $totalAmount = isset($item['total_amount']) ? (float)$item['total_amount'] : 0.0;
+                $totalAmount = isset($item['total_amount']) ? (float)$item['total_amount'] : 0;
                 if ($name === '' || $name === '-- Select Service --') { return false; }
                 if ($amount <= 0 && $totalAmount <= 0) { return false; }
                 return true;
             }));
+
+            // Filter out summary items from service items
+            $serviceItems = array_values(array_filter($serviceItems, function($item) {
+                return !isset($item['_type']) || $item['_type'] !== '_summary';
+            }));
+        } else {
+            $serviceItems = [];
         }
 
         if (is_array($purchaseItems)) {
@@ -378,35 +403,28 @@ class CustomerController extends Controller
                 $prodId = isset($item['product_id']) ? trim((string)$item['product_id']) : '';
                 $prodName = isset($item['product_name']) ? trim((string)$item['product_name']) : '';
                 $amount = isset($item['amount']) ? (float)$item['amount'] : 0.0;
-                $totalAmount = isset($item['total_amount']) ? (float)$item['total_amount'] : 0.0;
+                $totalAmount = isset($item['total_amount']) ? (float)$item['total_amount'] : 0;
                 if ($prodId === '' || $prodName === '' || $prodName === '-- Select Product --') { return false; }
                 if ($amount <= 0 && $totalAmount <= 0) { return false; }
                 return true;
             }));
+        } else {
+            $purchaseItems = [];
+        }
+
+        $hasServiceItems = !empty($serviceItems);
+        $hasPurchaseItems = !empty($purchaseItems);
+
+        if (!$hasServiceItems && !$hasPurchaseItems) {
+            Log::warning('No billable items provided', [
+                'service_items' => $request->input('service_items'),
+                'purchase_items' => $request->input('purchase_items')
+            ]);
+            return redirect()->route('customer.index')->with('error', 'Please add at least one service or sales item.');
         }
 
         Log::info('Decoded service items:', ['service_items' => $serviceItems]);
         Log::info('Decoded purchase items:', ['purchase_items' => $purchaseItems]);
-
-        if (!is_array($serviceItems) || empty($serviceItems)) {
-            Log::warning('Service items validation failed', ['service_items' => $request->input('service_items')]);
-            return redirect()->route('customer.index')->with('error', 'At least one service item is required.');
-        }
-
-        // Filter out summary items from service items
-        $serviceItems = array_filter($serviceItems, function($item) {
-            return !isset($item['_type']) || $item['_type'] !== '_summary';
-        });
-
-        if (empty($serviceItems)) {
-            Log::warning('No valid service items after filtering', ['service_items' => $serviceItems]);
-            return redirect()->route('customer.index')->with('error', 'At least one valid service item is required.');
-        }
-
-        // Purchase items are optional
-        if (!is_array($purchaseItems)) {
-            $purchaseItems = [];
-        }
 
         // Validate service items structure
         foreach ($serviceItems as $index => $item) {
@@ -516,8 +534,8 @@ class CustomerController extends Controller
                 'email' => $validatedData['email'],
                 'gender' => $validatedData['gender'],
                 'place' => $validatedData['place'],
-                'employee_id' => $validatedData['employee_id'],
-                'employee_details' => $validatedData['employee_details'],
+                // 'employee_id' => $validatedData['employee_id'],
+                // 'employee_details' => $validatedData['employee_details'],
                 'branch_id' => $validatedData['branch_id'],
                 'payment' => $validatedData['payment'],
                 'date' => $date,
@@ -566,8 +584,8 @@ class CustomerController extends Controller
                 'gender' => $validatedData['gender'],
                 'place' => $validatedData['place'],
                 'date' => $date,
-                'employee_id' => $validatedData['employee_id'],
-                'employee_details' => $validatedData['employee_details'],
+                // 'employee_id' => $validatedData['employee_id'],
+                // 'employee_details' => $validatedData['employee_details'],
                 'branch_id' => $validatedData['branch_id'],
                 'payment' => $validatedData['payment'],
                 'service_items' => $serviceItems,
@@ -601,8 +619,8 @@ class CustomerController extends Controller
             'service_total_calculation' => round($serviceTotalAfterTax, 2),
             'payment_method' => $validatedData['payment'], // Already normalized array
             'branch_id' => $validatedData['branch_id'],
-            'employee_id' => $validatedData['employee_id'],
-            'employee_details' => $validatedData['employee_details'],
+            // 'employee_id' => $validatedData['employee_id'],
+            // 'employee_details' => $validatedData['employee_details'],
         ]);
 
         DB::commit();
@@ -620,14 +638,21 @@ class CustomerController extends Controller
             : 'New customer created successfully and invoice generated!';
 
         // Send email if email is provided
-        if (!empty($customer->email)) {
-            try {
-                Mail::to($customer->email)->send(new \App\Mail\EmployeeFormEmail($customer));
-            } catch (\Exception $e) {
-                Log::warning('Failed to send email to customer: ' . $e->getMessage());
-                // Don't fail the entire process if email fails
+        // if (!empty($customer->email)) {
+        //     try {
+        //         Mail::to($customer->email)->send(new \App\Mail\EmployeeFormEmail($customer));
+        //     } catch (\Exception $e) {
+        //         Log::warning('Failed to send email to customer: ' . $e->getMessage());
+        //     }
+        // }
+
+             if (!empty($customer->email)) {
+                try {
+                    Mail::to($customer->email)->send(new \App\Mail\MembertMail($customer));
+                } catch (\Exception $e) {
+                    Log::warning('Failed to send email: ' . $e->getMessage());
+                }
             }
-        }
 
         // Generate PDF invoice using the invoice data
         try {
@@ -984,7 +1009,17 @@ class CustomerController extends Controller
         ]);
 
         $user = auth()->user();
-        $query = Customer::where('number', $request->number);
+        $permissionsPayload = $user
+            ? checkUserPermissions($user)
+            : ['permissions' => [], 'hasFullAccess' => false];
+        $permissions = $permissionsPayload['permissions'];
+        $hasFullAccess = $permissionsPayload['hasFullAccess'];
+        $isSubadmin = $user && method_exists($user, 'roles') && $user->roles()->where('slug', 'subadmin')->exists();
+        $canViewBranchDetails = $hasFullAccess
+            || hasPermission($permissions, 'branches', 'read')
+            || hasPermission($permissions, 'branches')
+            || $isSubadmin;
+        $query = Customer::with('branch')->where('number', $request->number);
 
         // Subadmin can only access customers from their branch
         if ($user && method_exists($user, 'roles') && $user->roles()->where('slug', 'subadmin')->exists()) {
@@ -996,6 +1031,16 @@ class CustomerController extends Controller
         $customer = $query->first();
 
         if ($customer) {
+            $branchPayload = null;
+            if ($canViewBranchDetails && $customer->branch) {
+                $branchPayload = [
+                    'id' => $customer->branch->id,
+                    'name' => $customer->branch->name,
+                    'address' => $customer->branch->address,
+                    'place' => $customer->branch->place,
+                ];
+            }
+
             return response()->json([
                 'success' => true,
                 'customer' => [
@@ -1004,11 +1049,13 @@ class CustomerController extends Controller
                     'name' => $customer->name,
                     'email' => $customer->email,
                     'gender' => $customer->gender,
+                    'membership_card' => $customer->membership_card,
                     'branch_id' => $customer->branch_id,
+                    'branch' => $branchPayload,
                     'place' => $customer->place,
                     'payment' => $customer->payment,
-                    'employee_id' => $customer->employee_id,
-                    'employee_details' => $customer->employee_details
+                    // 'employee_id' => $customer->employee_id,
+                    // 'employee_details' => $customer->employee_details
                 ]
             ]);
         }
@@ -1025,9 +1072,20 @@ class CustomerController extends Controller
     public function create()
     {
         $user = auth()->user();
+        $permissionsPayload = $user
+            ? checkUserPermissions($user)
+            : ['permissions' => [], 'hasFullAccess' => false];
+        $permissions = $permissionsPayload['permissions'];
+        $hasFullAccess = $permissionsPayload['hasFullAccess'];
+        $isSubadmin = $user && method_exists($user, 'roles') && $user->roles()->where('slug', 'subadmin')->exists();
+        $canViewBranchDetails = $hasFullAccess
+            || hasPermission($permissions, 'branches', 'read')
+            || hasPermission($permissions, 'branches')
+            || $isSubadmin;
         $employees = Employees::all();
         $services = ServiceManagement::all();
-        $managements = Management::all();
+        $managements = Management::with('categories')->get();
+        $serviceCombos = ServiceCombo::all();
 
         // Branch options for the form: subadmin sees only their branch
         if ($user && method_exists($user, 'roles') && $user->roles()->where('slug', 'subadmin')->exists() && isset($user->branch_id)) {
@@ -1036,7 +1094,13 @@ class CustomerController extends Controller
             $Branch = Branch::all();
         }
 
-        return view('admin.customer', compact('employees', 'services', 'managements', 'Branch'));
+        // Get user branch for subadmin users
+        $userBranch = null;
+        if ($user && method_exists($user, 'roles') && $user->roles()->where('slug', 'subadmin')->exists() && isset($user->branch_id)) {
+            $userBranch = Branch::find($user->branch_id);
+        }
+
+        return view('admin.customer', compact('employees', 'services', 'managements', 'serviceCombos', 'Branch', 'user', 'userBranch', 'canViewBranchDetails'));
     }
 
     /**

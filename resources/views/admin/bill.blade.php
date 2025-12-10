@@ -221,7 +221,9 @@
 
 <script>
 function printInvoice(invoiceId) {
+    // Open the invoice in a new window for printing (by invoice id)
     const printWindow = window.open('{{ route('invoice.view', ':id') }}'.replace(':id', invoiceId), '_blank', 'width=800,height=600');
+
     printWindow.onload = function() {
 
         setTimeout(function() {

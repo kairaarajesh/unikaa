@@ -59,7 +59,7 @@
                                             <td>{{ $loop->iteration }}</td>
                                             <td> {{ $management->product_name }} </td>
                                             <td> {{ $management->product_code }} </td>
-                                            <td> {{ $management->branch }} </td>
+                                            <td> {{ $management->branch?->name ?? 'N/A' }} </td>
                                             <td  style="background-color: {{ $management->Quantity < 5 ? 'red' : 'inherit' }}">
                                               {{ $management->Quantity }}
                                             </td>

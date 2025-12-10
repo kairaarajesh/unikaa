@@ -16,6 +16,7 @@ use App\Http\Controllers\Staff_managementController;
 use App\Http\Controllers\Student_AttendanceController;
 use App\Http\Controllers\Staff_attendanceController;
 use App\Http\Controllers\BillController;
+use App\Http\Controllers\StaffserviceController;
 use App\Models\Purchase;
 
 Route::get('/', function () {
@@ -77,6 +78,9 @@ Route::group(['middleware' => ['auth', 'Role'], 'roles' => ['admin']], function 
     Route::resource('/customer', '\App\Http\Controllers\CustomerController');
     Route::resource('/service', '\App\Http\Controllers\ServiceManagementController');
     Route::resource('/serviceCombo', '\App\Http\Controllers\ServiceComboController');
+
+    Route::resource('/staffservice', '\App\Http\Controllers\StaffserviceController');
+
     // Billing list/report view
     Route::get('/bill', [BillController::class, 'index'])->name('bill.index');
 

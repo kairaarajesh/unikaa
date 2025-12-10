@@ -31,13 +31,13 @@ class CreateCustomersTable extends Migration
             $table->string('referral_email');
              $table->unsignedBigInteger('employee_id')->nullable();
             $table->foreign('employee_id')->references('id')->on('employee')->onDelete('SET NULL');
-            $table->bigInteger('employee_details');    
-           $table->bigInteger('tax');
+            $table->bigInteger('employee_details');
+            $table->bigInteger('tax');
             $table->bigInteger('subtotal');
             $table->bigInteger('service_tax');
             $table->bigInteger('service_tax_amount');
             $table->bigInteger('service_total_calculation');
-            // $table->string('branch');     
+            // $table->string('branch');
             $table->unsignedBigInteger('branch_id')->nullable();
             $table->foreign('branch_id')->references('id')->on('branch')->onDelete('SET NULL');
             $table->longText('service_items');

@@ -150,6 +150,8 @@
                             <thead>
                                 <tr>
                                     <th data-priority="1">ID</th>
+                                    <th data-priority="2">Employee ID</th>
+                                    <th data-priority="2">Employee Name</th>
                                     <th data-priority="2">Place</th>
                                     <th data-priority="2">CUST ID</th>
                                     <th data-priority="2">Customer Number</th>
@@ -169,6 +171,8 @@
                                 @foreach($customers as $customer)
                                 <tr>
                                     <td>{{ $loop->iteration }}</td>
+                                    <td> {{ $customer->employee?->employee_name ?? 'N/A' }} </td>
+                                    <td> {{ $customer->employee_details ?? 'N/A' }} </td>
                                     <td> {{ $customer->branch?->name ?? 'N/A' }} </td>
                                     <td>{{ $customer->customer_id }}</td>
                                     <td>{{ $customer->number }}</td>

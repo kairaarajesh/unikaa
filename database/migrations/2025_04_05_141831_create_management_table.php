@@ -20,7 +20,9 @@ class CreateManagementTable extends Migration
             $table->string('product_code');
             $table->string('Quantity');
             $table->string('price');
-            $table->string('branch');
+            $table->string('place');
+            $table->unsignedBigInteger('branch_id')->nullable();
+            $table->foreign('branch_id')->references('id')->on('branch')->onDelete('SET NULL');
             $table->string('date');
             $table->unsignedBigInteger('category_id')->nullable();
             $table->foreign('category_id')->references('id')->on('categories')->onDelete('SET NULL');

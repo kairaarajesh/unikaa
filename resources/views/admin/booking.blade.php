@@ -52,7 +52,8 @@
                                         <th data-priority="5">Service Name</th>
                                         <th data-priority="5">Service Price</th>
                                         <th data-priority="5">serviceCategory</th>
-                                        <th data-priority="6">Location</th>
+                                        <th data-priority="6">Branch</th>
+                                        <th data-priority="6">Place</th>
                                         <th data-priority="9">date</th>
                                         <th data-priority="9">time</th>
                                         <th>Status</th>
@@ -71,6 +72,7 @@
                                             <td>{{ $booking['servicePrice'] ?? 'N/A' }}</td>
                                             <td>{{ $booking['serviceCategory'] ?? 'N/A' }}</td>
                                             <td>{{ $booking['location'] ?? 'N/A' }}</td>
+                                             <td>{{ $booking['branchLocation'] ?? 'N/A' }}</td>
                                             <td>
                                                 @if(!empty($booking['date']))
                                                     {{ \Carbon\Carbon::parse($booking['date'])->format('Y M d') }}

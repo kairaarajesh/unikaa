@@ -18,11 +18,7 @@
                     </div>
                     <div class="form-group">
                         <label for="product_code" class="col-sm-5 control-label">Place</label>
-                        <input type="text" class="form-control" name="place" value="{{ $branch->place }}" >
-                    </div>
-                    <div class="form-group">
-                        <label for="address" class="col-sm-3 control-label">Address</label>
-                        <textarea type="text" class="form-control" name="address" value="{{ $branch->address }}" required></textarea>
+                        <input type="text" class="form-control" name="place" value="{{ $branch->address }}" >
                     </div>
                     <div class="form-group">
                         <label for="price" class="col-sm-3 control-label">Number</label>

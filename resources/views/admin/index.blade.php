@@ -2,7 +2,7 @@
 
 @section('css')
 <!--Chartist Chart CSS -->
-<link rel="stylesheet" href="{{ URL::asset('public/plugins/chartist/css/chartist.min.css') }}">
+<link rel="stylesheet" href="{{ URL::asset('plugins/chartist/css/chartist.min.css') }}">
 @endsection
 
 @section('breadcrumb')
@@ -196,40 +196,31 @@
             <!-- end row -->
 
             <div class="row">
-                {{-- Monthly Report - Only show if user has billing or reports permission --}}
                 @if($hasFullAccess || hasPermission($permissions, 'billing') || hasPermission($permissions, 'reports'))
                 <div class="col-xl-9">
+                    <div class="btn-group mb-3">
+                        <a href="{{ url('admin?filter=today') }}"
+                        class="btn btn-sm {{ $filter=='today'?'btn-primary':'btn-light' }}">Today</a>
+
+                        <a href="{{ url('admin?filter=week') }}"
+                        class="btn btn-sm {{ $filter=='week'?'btn-primary':'btn-light' }}">This Week</a>
+
+                        <a href="{{ url('admin?filter=month') }}"
+                        class="btn btn-sm {{ $filter=='month'?'btn-primary':'btn-light' }}">This Month</a>
+
+                        <a href="{{ url('admin?filter=year') }}"
+                        class="btn btn-sm {{ $filter=='year'?'btn-primary':'btn-light' }}">This Year</a>
+
+                       <a href="javascript:void(0)" id="resetFilter" class="btn btn-sm btn-danger">Reset</a>
+
+                    </div>
                     <div class="card">
-                        <div class="card-body">
-                            <h4 class="mt-0 header-title mb-5">Monthly Report</h4>
-                            <div class="row">
-                                <div class="col-lg-7">
-                                    <div>
-                                        <div id="chart-with-area" class="ct-chart earning ct-golden-section"></div>
-                                    </div>
-                                </div>
-                                <div class="col-lg-5">
-                                    <div class="row">
-                                        <div class="col-md-6">
-                                            <div class="text-center">
-                                                <p class="text-muted mb-4">This month</p>
-                                                <h4>{{$data[3]}}</h4>
-                                                <p class="text-warning mb-5">Customer Purchase</p>
-                                                <span class="peity-donut" data-peity='{ "fill": ["#02a499", "#f2f2f2"], "innerRadius": 28, "radius": 32 }' data-width="72" data-height="72">{{$data[3]}}/{{count($data)}}</span>
-                                            </div>
-                                        </div>
-                                        <div class="col-md-6">
-                                            <div class="text-center">
-                                                <p class="text-muted mb-4">Last month</p>
-                                                <h4>{{$data[4]}}</h4>
-                                                <p class="text-secondary mb-5">Customer Purchase</p>
-                                                <span class="peity-donut" data-peity='{ "fill": ["#02a499", "#f2f2f2"], "innerRadius": 28, "radius": 32 }' data-width="72" data-height="72">3/5</span>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                            <!-- end row -->
+                        <div class="card-body text-center">
+                            <h4>{{ $invoiceCount }}</h4>
+                            <p class="text-warning">Total Invoices ({{ strtoupper($filter) }})</p>
+
+                            <h5 class="text-success">₹ {{ number_format($totalAmount, 2) }}</h5>
+                            <p>Total Amount</p>
                         </div>
                     </div>
                     <!-- end card -->
@@ -352,13 +343,23 @@
                 </div>
             </div>
             @endif --}}
+
+        <script>
+            document.getElementById("resetFilter").addEventListener("click", function () {
+                // redirect to admin page without any filter
+                window.location.href = "{{ url('admin') }}";
+            });
+        </script>
 @endsection
+
+
+
 
 @section('script')
 <!--Chartist Chart-->
-<script src="{{ URL::asset('public/plugins/chartist/js/chartist.min.js') }}"></script>
-<script src="{{ URL::asset('public/plugins/chartist/js/chartist-plugin-tooltip.min.js') }}"></script>
+<script src="{{ URL::asset('plugins/chartist/js/chartist.min.js') }}"></script>
+<script src="{{ URL::asset('plugins/chartist/js/chartist-plugin-tooltip.min.js') }}"></script>
 <!-- peity JS -->
-<script src="{{ URL::asset('public/plugins/peity-chart/jquery.peity.min.js') }}"></script>
-<script src="{{ URL::asset('public/assets/pages/dashboard.js') }}"></script>
+<script src="{{ URL::asset('plugins/peity-chart/jquery.peity.min.js') }}"></script>
+<script src="{{ URL::asset('assets/pages/dashboard.js') }}"></script>
 @endsection

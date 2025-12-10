@@ -29,33 +29,6 @@
                                          <option value="velour" {{ old('branch') == 'velour' ? 'selected' : '' }}>velour</option>
                                     </select>
                         </div> --}}
-
-                        @php($authUser = auth()->user())
-                        @if($authUser && method_exists($authUser, 'roles') && $authUser->roles()->where('slug','subadmin')->exists() && isset($authUser->branch_id))
-                            @php($userBranch = $Branch->where('id', $authUser->branch_id)->first())
-                            <input type="hidden" name="branch_id" value="{{ $authUser->branch_id }}">
-                            <div class="form-group">
-                                <label class="col-sm-6 control-label">Branch</label>
-                                <input
-                                    type="text"
-                                    class="form-control"
-                                    value="{{ $userBranch->name ?? '' }}"
-                                    data-branch-id="{{ $authUser->branch_id }}"
-                                    readonly
-                                >
-                            </div>
-                            <div class="form-group">
-                                <label for="placeSelect" class="col-sm-5 control-label">Place</label>
-                                <input
-                                    type="text"
-                                    class="form-control"
-                                    id="branch-info-place"
-                                    name="place"
-                                    value="{{ $userBranch->place ?? $userBranch->address ?? '' }}"
-                                    readonly
-                                >
-                            </div>
-                        @else
                             <div class="form-group">
                                 <label for="branch_id" class="col-sm-6 control-label">Branch</label>
                                 <select class="select select2s-hidden-accessible form-control" id="branch_id" name="branch_id">
@@ -77,9 +50,8 @@
                                     readonly
                                 >
                             </div>
-                        @endif
 
-						<div class="form-group">
+						{{-- <div class="form-group">
                                 <label for="employeeSelect" class="col-sm-5 control-label">Staff Name</label>
                                 <select class="select2 form-control" id="employeeSelect" name="employee_id">
                                     <option selected disabled>---- Select Branch First ----</option>
@@ -88,7 +60,7 @@
                             <div class="form-group">
                                 <label for="employeeDetailsSelect" class="col-sm-5 control-label">Staff ID</label>
                                 <input type="text" class="form-control" id="employeeDetails" name="employee_details" readonly>
-                            </div>
+                            </div> --}}
 
 					<div class="form-group">
 						<label for="number">Customer Number</label>
@@ -128,7 +100,7 @@
 							<label for="email" class="col-sm-3 control-label">Customer Email</label>
 							<input type="email" placeholder="Enter Email" class="form-control" id="email" name="email">
 						</div>
-                        <div class="form-group">
+                         <div class="form-group">
                             <label for="name">Gender</label>
                                     <select class="form-control @error('gender') is-invalid @enderror" id="gender" name="gender">
                                         <option> --Select-- </option>
@@ -142,14 +114,57 @@
 									<input type="date" class="form-control" id="date" name="date" autofocus>
 								</div>
 						</div>
-
                                     <input type="hidden" name="service_items" id="service-items-hidden" >
                                     <input type="hidden" name="purchase_items" id="purchase-items-hidden">
                         <div class="modal-body">
                             {{-- <form id="invoiceCreateForm" method="POST" action="{{ route('customer.store') }}">
                                  @csrf --}}
                                  <input type="hidden" name="customer_id" id="invoice-customer-id" value="">
-                    			<label><strong>Services</strong></label>
+
+							<!-- Service Combo Dropdown -->
+							<div class="form-group mb-3">
+								<label><strong>Select Service Combo (Optional)</strong></label>
+								<select class="form-control" id="service-combo-select" style="font-size: 16px; height: 44px;">
+									<option value="">-- Select Service Combo --</option>
+									@php
+										$serviceCombos = $serviceCombos ?? collect([]);
+									@endphp
+									@foreach($serviceCombos as $combo)
+										@php
+											// Decode service_combo if it's JSON, otherwise use as string
+											$comboName = $combo->service_combo ?? '';
+											if (is_string($combo->service_combo) && !empty($combo->service_combo)) {
+												$decoded = json_decode($combo->service_combo, true);
+												if (is_array($decoded) && !empty($decoded)) {
+													// Get service names from IDs
+													$serviceNames = \App\Models\ServiceManagement::whereIn('id', $decoded)->pluck('service_name')->toArray();
+													$comboName = !empty($serviceNames) ? implode(' + ', $serviceNames) : ($combo->service_combo ?? '');
+												}
+											}
+											// Ensure comboName is always set
+											if (empty($comboName)) {
+												$comboName = $combo->service_combo ?? 'Unnamed Combo';
+											}
+											$amount = $combo->amount ?? 0;
+											$quantity = $combo->quantity ?? 0;
+											$totalAmount = $combo->total_amount ?? 0;
+										@endphp
+										<option
+											value="{{ $combo->id }}"
+											data-combo-name="{{ addslashes($comboName) }}"
+											data-amount="{{ $amount }}"
+											data-quantity="{{ $quantity }}"
+											data-total-amount="{{ $totalAmount }}"
+											data-tax="{{ $combo->tax ?? 18 }}"
+											data-service-combo="{{ is_string($combo->service_combo) ? $combo->service_combo : json_encode($combo->service_combo) }}">
+											{{ $comboName }} - Amount: ₹{{ number_format($amount, 2) }}, Offer Amount: {{ $quantity }}, Total: ₹{{ number_format($totalAmount, 2) }}
+										</option>
+									@endforeach
+								</select>
+								<small class="form-text text-muted">Select a service combo to auto-fill service items. Amount, Quantity, and Total Amount will be displayed.</small>
+							</div>
+
+                    		<label><strong>Services</strong></label>
 							<div class="table-responsive">
 								<table class="table table-bordered table-striped table-hover table-big" id="service-items-table">
 									<thead class="thead-light">
@@ -157,8 +172,8 @@
 											<th>Service Name *</th>
 											<th>Amount *</th>
                                             <th>Discount (%)</th>
-                                            {{-- <th>Tax (%)</th>
-									        <th>Tax Amount</th> --}}
+                                            <th>Staff Name</th>
+                                            <th>Staff ID</th>
 									        <th>Total Amount</th>
 											<th>Action</th>
 										</tr>
@@ -171,7 +186,7 @@
 						<div class="row" style="margin-top:12px;">
 							{{-- <div class="col-md-3">
 								<label for="subtotal"><strong>Subtotal</strong></label>
-								<input type="number" class="form-control" id="subtotal" name="subtotal" value="0.00" readonly>
+								<input type="number" class="form-control" id="subtotal" name="subtotal" value="0" readonly>
 							</div> --}}
                             <div class="col-md-3">
                                 <label for="tax"><strong>Tax (%)</strong></label>
@@ -186,12 +201,7 @@
 								<input type="number" class="form-control" id="service_total_calculation" name="service_total_calculation" value="0.00" readonly>
 							</div>
 						</div>
-						<!-- Aggregated totals for backend validation -->
-						<input type="hidden" name="amount" id="aggregate-amount" value="0">
-                        <input type="hidden" name="tax" id="aggregate-tax" value="0">
-						<input type="hidden" name="total_amount" id="aggregate-total-amount" value="0">
-						<input type="hidden" name="total_calculation" id="total-calculation-hidden" value="0">
-
+                    </br>
 						<div class="form-group">
 								<label><strong>Sales</strong> </label>
 								<div class="table-responsive">
@@ -201,7 +211,8 @@
 												<th>Product Name *</th>
 												<th>Product Code</th>
 												<th>Amount *</th>
-												<th>Discount (%)</th>
+                                            	<th>Brand</th>
+                                             	<th>Discount (%)</th>
 												{{-- <th>Tax (%)</th> --}}
 												<th>Total Amount</th>
 												<th>Action</th>
@@ -214,7 +225,7 @@
 								<input type="hidden" name="purchase_total_amount" id="purchase-total-amount-hidden" value="0">
                         </div>
 
- <div class="form-group" name="payment[]">
+                        <div class="form-group" name="payment[]">
                             <label>Payment Method</label>
                             <div>
                                 <div class="form-check">
@@ -270,6 +281,51 @@
                             @enderror
                         </div>
 
+                        <!-- Gpay Payment Details Section -->
+                        <div class="form-group" id="gpay-payment-section" style="display: none; margin-top: 15px;">
+                            <label><strong>Gpay Details</strong></label>
+                        <div class="table-responsive">
+                                <table class="table table-bordered table-striped" id="gpay-payment-table">
+                                    <thead class="thead-light">
+                                        <tr>
+                                            <th>Total Amount</th>
+                                            <th>Gpay Amount</th>
+                                            <th>Buy Amount (Total - Gpay)</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr>
+                                            <td>
+                                                <input type="text"
+                                                    class="form-control"
+                                                    id="gpay_total_amount"
+                                                    value="0.00"
+                                                    readonly>
+                                            </td>
+                                            <td>
+                                                <input type="number"
+                                                    class="form-control"
+                                                    id="gpay_amount"
+                                                    name="gpay_amount"
+                                                    step="0.01"
+                                                    min="0"
+                                                    placeholder="0.00"
+                                                    value="{{ old('gpay_amount', '') }}">
+                                            </td>
+                                            <td>
+                                                <input type="text"
+                                                    class="form-control"
+                                                    id="gpay_balance_amount"
+                                                    readonly
+                                                    placeholder="0.00"
+                                                    value="0.00">
+                                            </td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+
                         <!-- Cash Payment Details Section -->
                         <div class="form-group" id="cash-payment-section" style="display: none; margin-top: 15px;">
                             <label><strong>Cash Payment Details</strong></label>
@@ -277,13 +333,29 @@
                                 <table class="table table-bordered table-striped" id="cash-payment-table">
                                     <thead class="thead-light">
                                         <tr>
-                                            <th>Cash Total Amount</th>
-                                            <th>Buy Amount</th>
+                                            <th>Total Amount</th>
+                                            <th>Buy Amount (Total - Gpay)</th>
+                                            <th>Cash Amount</th>
                                             <th>Refund Amount</th>
+                                            <th>Cash Used</th>
                                         </tr>
                                     </thead>
                                     <tbody>
                                         <tr>
+                                            <td>
+                                                <input type="text"
+                                                    class="form-control"
+                                                    id="cash_invoice_total"
+                                                    readonly
+                                                    value="0.00">
+                                            </td>
+                                            <td>
+                                                <input type="text"
+                                                    class="form-control"
+                                                    id="cash_buy_amount"
+                                                    readonly
+                                                    value="0.00">
+                                            </td>
                                             <td>
                                                 <input type="number"
                                                     class="form-control"
@@ -295,14 +367,12 @@
                                                     value="{{ old('cash_amount', '') }}">
                                             </td>
                                             <td>
-                                                <input type="number"
+                                                <input type="text"
                                                     class="form-control"
                                                     id="cash_refund_amount"
                                                     name="cash_refund_amount"
-                                                    step="0.01"
-                                                    min="0"
-                                                    placeholder="0.00"
-                                                    value="{{ old('cash_refund_amount', '') }}">
+                                                    readonly
+                                                    value="{{ old('cash_refund_amount', '0.00') }}">
                                             </td>
                                             <td>
                                                 <input type="text"
@@ -310,8 +380,7 @@
                                                     id="cash_total_amount"
                                                     name="cash_total_amount"
                                                     readonly
-                                                    placeholder="0.00"
-                                                    value="0.00">
+                                                    value="{{ old('cash_total_amount', '0.00') }}">
                                             </td>
                                         </tr>
                                     </tbody>
@@ -470,6 +539,12 @@
     #service-items-table input.item-line-total,
     #purchase-items-table input[type="number"],
     #purchase-items-table input.purchase-line-total { text-align: right; }
+    .percent-input-group .form-control { text-align: right; }
+    .percent-input-group .input-group-text {
+        font-weight: 600;
+        background-color: #f1f3f5;
+        border-color: #ced4da;
+    }
     /* Service table column widths */
     #service-items-table thead th:nth-child(1),
     #service-items-table tbody td:nth-child(1) { width: 26%; }
@@ -530,6 +605,42 @@
 </style>
 <!-- Dynamic service items JS -->
 <script>
+    function clampPercentValue(value) {
+        var num = parseFloat(value);
+        if (!isFinite(num)) { return 0; }
+        if (num < 0) { return 0; }
+        if (num > 100) { return 100; }
+        return num;
+    }
+
+    function formatPercentValue(value) {
+        return clampPercentValue(value).toFixed(2);
+    }
+
+    function setPercentInputValue(input, value) {
+        if (!input) { return; }
+        input.value = formatPercentValue(value);
+    }
+
+    function getPercentInputValue(input) {
+        if (!input) { return 0; }
+        return clampPercentValue(input.value);
+    }
+
+    function formatStorageAmount(value) {
+        var num = parseFloat(value);
+        if (!isFinite(num)) { return '0.00'; }
+        return num.toFixed(2);
+    }
+
+    function formatDisplayAmount(value) {
+        var num = parseFloat(value);
+        if (!isFinite(num)) { return '0'; }
+        // Always return whole number (remove decimals)
+        return Math.floor(num).toString();
+    }
+</script>
+<script>
 	(function() {
 		// Wait for jQuery to be available
 		function waitForJQuery(callback) {
@@ -541,30 +652,235 @@
 		}
 
 		waitForJQuery(function() {
-			// Scope lookups to the modal to avoid nulls before it mounts
 			function getServiceBody() { return document.querySelector('#addnew #service-items-body'); }
 			const hiddenCategoryContainer = document.getElementById('category-hidden-container');
 			const form = document.getElementById('addCustomerForm');
+            const customerGenderSelect = document.querySelector('#addnew #gender');
+            window.branchEmployees = window.branchEmployees || [];
+
+			function getSelectedGender() {
+                const raw = (customerGenderSelect && customerGenderSelect.value ? customerGenderSelect.value.trim() : '');
+                if (!raw || raw === '--Select--') { return ''; }
+				return raw.toLowerCase();
+			}
+
+			function applyGenderFilterToDatalist(datalistEl) {
+				if (!datalistEl) { return; }
+				const selectedGender = getSelectedGender();
+				const options = datalistEl.querySelectorAll('option');
+
+				// Store original options if not already stored
+				if (!datalistEl._allOptions) {
+					datalistEl._allOptions = Array.from(options).map(function(opt) {
+						return {
+							value: opt.value,
+							label: opt.getAttribute('label') || opt.textContent,
+							gender: opt.getAttribute('data-gender') || '',
+							amount: opt.getAttribute('data-amount') || '',
+							tax: opt.getAttribute('data-tax') || '18',
+							type: opt.getAttribute('data-type') || 'service',
+							quantity: opt.getAttribute('data-quantity') || '',
+							totalAmount: opt.getAttribute('data-total-amount') || ''
+						};
+					});
+				}
+
+				// Clear current options
+				datalistEl.innerHTML = '';
+
+				// Add filtered options
+				datalistEl._allOptions.forEach(function(optData) {
+					const optionGender = (optData.gender || '').trim().toLowerCase();
+					const isNeutral = optionGender === '' || optionGender === 'unisex' || optionGender === 'both' || optionGender === 'all';
+
+					// Show option if:
+					// 1. No gender selected (show all)
+					// 2. Option is neutral/unisex (show for all genders)
+					// 3. Option gender matches selected gender
+					if (!selectedGender || isNeutral || optionGender === selectedGender) {
+						const option = document.createElement('option');
+						option.value = optData.value;
+						if (optData.label) option.setAttribute('label', optData.label);
+						option.setAttribute('data-amount', optData.amount);
+						option.setAttribute('data-tax', optData.tax);
+						option.setAttribute('data-type', optData.type);
+						option.setAttribute('data-gender', optData.gender);
+						if (optData.quantity) option.setAttribute('data-quantity', optData.quantity);
+						if (optData.totalAmount) option.setAttribute('data-total-amount', optData.totalAmount);
+						option.textContent = optData.value;
+						datalistEl.appendChild(option);
+					}
+				});
+			}
+
+			function applyGenderFilterToRow(row) {
+				if (!row) { return; }
+				const serviceInput = row.querySelector('.item-service-input');
+				if (!serviceInput) { return; }
+				const datalistId = serviceInput.getAttribute('list');
+				if (!datalistId) { return; }
+				const datalistEl = document.getElementById(datalistId);
+				applyGenderFilterToDatalist(datalistEl);
+			}
+
+			function applyGenderFilterToAllRows() {
+				const rows = document.querySelectorAll('#addnew #service-items-body tr');
+				rows.forEach(function(row) { applyGenderFilterToRow(row); });
+
+				// Also filter the service combo dropdown
+				const serviceComboSelect = document.getElementById('service-combo-select');
+				if (serviceComboSelect) {
+					const selectedGender = getSelectedGender();
+					const options = serviceComboSelect.querySelectorAll('option');
+					options.forEach(function(option) {
+						if (option.value === '') {
+							// Always show the default "-- Select Service Combo --" option
+							option.hidden = false;
+							return;
+						}
+						// Service combos are typically unisex, so show them for all genders
+						// If you want to filter combos by gender, add data-gender attribute to combo options
+						option.hidden = false;
+					});
+				}
+			}
+
+            function populateRowEmployeeSelect(selectEl, selectedValue) {
+                if (!selectEl) { return; }
+                const employees = window.branchEmployees || [];
+                const currentVal = selectedValue || selectEl.value;
+                selectEl.innerHTML = '<option value="">---- Select Staff ----</option>';
+                employees.forEach(function(emp){
+                    const opt = document.createElement('option');
+                    opt.value = emp.id;
+                    const display = emp.employee_id ? (emp.employee_name + ' (' + emp.employee_id + ')') : emp.employee_name;
+                    opt.textContent = display;
+                    opt.setAttribute('data-employee-id', emp.employee_id || '');
+                    if (currentVal && String(currentVal) === String(emp.id)) {
+                        opt.selected = true;
+                    }
+                    selectEl.appendChild(opt);
+                });
+                if (typeof jQuery !== 'undefined' && jQuery(selectEl).hasClass('select2-hidden-accessible')) {
+                    jQuery(selectEl).trigger('change.select2');
+                }
+            }
+
+            function refreshAllRowEmployeeSelects() {
+                const rows = document.querySelectorAll('#addnew .row-employee-select');
+                rows.forEach(function(sel){ populateRowEmployeeSelect(sel); });
+            }
+
+            // expose for other scripts (branch employee loader) to call after AJAX
+            window.refreshServiceRowEmployees = refreshAllRowEmployeeSelects;
+
+            function handleGenderChange() {
+				applyGenderFilterToAllRows();
+				// Clear any selected services that don't match the new gender
+				const rows = document.querySelectorAll('#addnew #service-items-body tr');
+				rows.forEach(function(row) {
+					const serviceInput = row.querySelector('.item-service-input');
+					if (serviceInput && serviceInput.value) {
+						const datalistId = serviceInput.getAttribute('list');
+						const datalistEl = document.getElementById(datalistId);
+						if (datalistEl) {
+							const selectedGender = getSelectedGender();
+							const matchingOption = Array.from(datalistEl.querySelectorAll('option')).find(function(opt) {
+								return opt.value === serviceInput.value;
+							});
+							if (matchingOption && selectedGender) {
+								const optionGender = (matchingOption.getAttribute('data-gender') || '').trim().toLowerCase();
+								const isNeutral = optionGender === '' || optionGender === 'unisex' || optionGender === 'both' || optionGender === 'all';
+								if (!isNeutral && optionGender !== selectedGender) {
+									// Clear the service input if it doesn't match the selected gender
+									serviceInput.value = '';
+									const amountInput = row.querySelector('.item-amount');
+									const discountInput = row.querySelector('.item-discount');
+									const totalInput = row.querySelector('.item-line-total');
+									if (amountInput) amountInput.value = '';
+									if (discountInput) discountInput.value = '0';
+									if (totalInput) totalInput.value = '';
+									recalculateFromItems();
+								}
+							}
+						}
+					}
+				});
+			}
+
+            if (customerGenderSelect) {
+                // Apply filter when gender changes (dropdown selection)
+                customerGenderSelect.addEventListener('change', handleGenderChange);
+
+                // Also apply filter when clicking on the dropdown (for better UX)
+                customerGenderSelect.addEventListener('click', function() {
+					// Small delay to ensure the value is updated after click
+					setTimeout(function() {
+						handleGenderChange();
+					}, 50);
+				});
+            }
+            // Apply filter on initial load
+            applyGenderFilterToAllRows();
 
 			function addRow() {
 				const row = document.createElement('tr');
+				const datalistId = 'service-suggestions-' + Date.now();
+
+				// Build datalist options HTML
+				let datalistOptions = '';
+				@foreach($services as $srv)
+				 datalistOptions += '<option value="{{ addslashes($srv->service_name) }}" label="{{ addslashes($srv->service_name) }}{{ $srv->gender ? ' (' . $srv->gender . ')' : '' }}" data-amount="{{ $srv->amount }}" data-tax="{{ $srv->tax ?? 18 }}" data-type="service" data-gender="{{ $srv->gender ?? '' }}">{{ addslashes($srv->service_name) }}</option>';
+				@endforeach
+				@php
+					$serviceCombos = $serviceCombos ?? collect([]);
+				@endphp
+				@foreach($serviceCombos as $combo)
+					<?php
+						// Decode service_combo if it's JSON, otherwise use as string
+						$comboName = $combo->service_combo ?? '';
+						if (is_string($combo->service_combo) && !empty($combo->service_combo)) {
+							$decoded = json_decode($combo->service_combo, true);
+							if (is_array($decoded) && !empty($decoded)) {
+								// Get service names from IDs
+								$serviceNames = \App\Models\ServiceManagement::whereIn('id', $decoded)->pluck('service_name')->toArray();
+								$comboName = !empty($serviceNames) ? implode(' + ', $serviceNames) : ($combo->service_combo ?? '');
+							}
+						}
+						// Ensure comboName is always set
+						if (empty($comboName)) {
+							$comboName = $combo->service_combo ?? 'Unnamed Combo';
+						}
+					?>
+				 datalistOptions += '<option value="{{ addslashes($comboName) }}" label="{{ addslashes($comboName) }} (Combo)" data-amount="{{ $combo->amount }}" data-quantity="{{ $combo->quantity }}" data-total-amount="{{ $combo->total_amount }}" data-tax="{{ $combo->tax ?? 18 }}" data-type="combo" data-gender="">{{ addslashes($comboName) }} (Combo)</option>';
+				@endforeach
+
 				row.innerHTML = `
 					<td>
 						<div class="service-input-container" style="position: relative;">
-							<input type="text" class="form-control item-service-input" name="category[]" placeholder="Type or select service..." autocomplete="off" list="service-suggestions-${Date.now()}">
-							<datalist id="service-suggestions-${Date.now()}">
-								@foreach($services as $srv)
-								<option value="{{ $srv->service_name }}" data-amount="{{ $srv->amount }}" data-tax="{{ $srv->tax ?? 18 }}">{{ $srv->service_name }}</option>
-								@endforeach
+							<input type="text" class="form-control item-service-input" name="category[]" placeholder="Type or select service..." autocomplete="off" list="${datalistId}">
+							<datalist id="${datalistId}">
+								${datalistOptions}
 							</datalist>
 							<button type="button" class="btn btn-sm btn-outline-secondary service-dropdown-toggle" style="position: absolute; right: 5px; top: 50%; transform: translateY(-50%); z-index: 10; border: none; background: transparent; padding: 2px 8px;">
 								<i class="fa fa-chevron-down" style="font-size: 12px;"></i>
 							</button>
 						</div>
 					</td>
-					<td><input type="number" name="item_amount[]" step="0.01" min="0" inputmode="decimal" placeholder="0.00" class="form-control item-amount" value=""></td>
-					<td><input type="number" min="0" max="100" name="item_discount[]" inputmode="decimal" placeholder="0" class="form-control item-discount" value="0"></td>
-					<td><input type="text" name="item_total_amount[]" class="form-control item-line-total" placeholder="0.00" value="0.00" readonly></td>
+					<td><input type="number" name="item_amount[]" step="0.01" min="0" inputmode="decimal" placeholder="0" class="form-control item-amount" value="" readonly></td>
+					<td>
+                        <div class="input-group input-group-sm percent-input-group">
+					        <input type="number" min="0" max="100" step="0.01" name="item_discount[]" inputmode="decimal" placeholder="0" class="form-control item-discount" value="">
+                            <div class="input-group-append"><span class="input-group-text">%</span></div>
+                        </div>
+                    </td>
+					<td>
+                        <select class="form-control row-employee-select">
+                            <option value="">---- Select Staff ----</option>
+                        </select>
+                    </td>
+                    <td><input type="text" class="form-control row-employee-details" readonly></td>
+                    <td><input type="text" name="item_total_amount[]" inputmode="decimal" class="form-control item-line-total" placeholder="0" value=""></td>
 					<td><button type="button" class="btn btn-danger btn-sm remove-item">Remove</button></td>
 				`;
 
@@ -572,6 +888,7 @@
 				if (!bodyEl) { return; }
 				bodyEl.appendChild(row);
 
+				applyGenderFilterToRow(row);
 				bindRowEvents(row);
 				recalculateFromItems();
 
@@ -580,13 +897,45 @@
 				if (serviceInputNew) { serviceInputNew.focus(); }
 			}
 
+			function syncServiceDiscountFromTotal(amountEl, totalEl, discountEl) {
+				if (!amountEl || !totalEl || !discountEl) { return; }
+				const amountVal = parseFloat(amountEl.value);
+				const totalVal = parseFloat(totalEl.value);
+				if (!isFinite(amountVal) || amountVal <= 0) {
+					discountEl.value = '0';
+					return;
+				}
+				let pct = ((amountVal - totalVal) / amountVal) * 100;
+				if (!isFinite(pct)) { pct = 0; }
+				pct = clampPercentValue(pct);
+				setPercentInputValue(discountEl, pct);
+			}
+
 			function bindRowEvents(row) {
 				const serviceInput = row.querySelector('.item-service-input');
 				const amountSelect = row.querySelector('.item-amount');
 				const discountInputRow = row.querySelector('.item-discount');
 				const lineTotalInput = row.querySelector('.item-line-total');
+                const serviceGenderField = row.querySelector('.item-service-gender');
+                const rowEmployeeSelect = row.querySelector('.row-employee-select');
+                const rowEmployeeDetails = row.querySelector('.row-employee-details');
 				const removeBtn = row.querySelector('.remove-item');
 				const dropdownToggle = row.querySelector('.service-dropdown-toggle');
+
+				function applyGenderFromOption(option) {
+					if (!serviceGenderField) { return; }
+					if (!option) {
+						serviceGenderField.value = '-';
+						return;
+					}
+					const optionGender = (option.getAttribute('data-gender') || '').trim();
+					if (optionGender) {
+						serviceGenderField.value = optionGender;
+						return;
+					}
+					const type = option.getAttribute('data-type');
+					serviceGenderField.value = type === 'combo' ? 'Combo' : 'Unisex';
+				}
 
 				// Handle service input changes (both typing and selection from datalist)
 				serviceInput.addEventListener('input', function() {
@@ -595,15 +944,52 @@
 					const datalistElement = document.getElementById(datalist);
 
 					// Find matching option in datalist
+					let matchedOption = null;
 					if (datalistElement) {
 						const options = datalistElement.querySelectorAll('option');
 						for (let option of options) {
 							if (option.value === inputValue) {
+								const type = option.getAttribute('data-type') || 'service';
 								const amt = option.getAttribute('data-amount') || '';
 								const tax = option.getAttribute('data-tax') || '18';
-								if (amt) {
-									amountSelect.value = amt;
+								matchedOption = option;
+								applyGenderFromOption(option);
+
+								if (type === 'combo') {
+									// Handle service combo
+									const quantity = parseFloat(option.getAttribute('data-quantity')) || 0;
+									const totalAmt = parseFloat(option.getAttribute('data-total-amount')) || 0;
+
+									if (amt) {
+										amountSelect.value = amt;
+									}
+
+									// Calculate discount percentage from quantity (offer price)
+									// quantity is the discount amount, so discount% = (quantity / amount) * 100
+									const discountPct = amt > 0 ? ((quantity / parseFloat(amt)) * 100).toFixed(2) : 0;
+									const discountInput = row.querySelector('.item-discount');
+									if (discountInput) {
+										setPercentInputValue(discountInput, discountPct);
+									}
+
+									// Calculate total amount with discount applied
+									// Use the calculated discount percentage to compute total
+									const calculatedTotal = parseFloat(amt) - (parseFloat(amt) * (parseFloat(discountPct) / 100));
+									if (lineTotalInput) {
+										lineTotalInput.value = formatDisplayAmount(calculatedTotal);
+									}
+								} else {
+									// Handle regular service
+									if (amt) {
+										amountSelect.value = amt;
+									}
+									// Reset discount for regular services
+									const discountInput = row.querySelector('.item-discount');
+									if (discountInput) {
+										setPercentInputValue(discountInput, 0);
+									}
 								}
+
 								// Update any tax field if needed
 								const taxInput = document.getElementById('item_tax');
 								if (taxInput && tax !== '18') {
@@ -612,6 +998,9 @@
 								break;
 							}
 						}
+					}
+					if (!matchedOption) {
+						applyGenderFromOption(null);
 					}
 
 					updateHiddenCategories();
@@ -624,20 +1013,64 @@
 					const datalist = this.getAttribute('list');
 					const datalistElement = document.getElementById(datalist);
 
+					let matchedOption = null;
 					if (datalistElement) {
 						const options = datalistElement.querySelectorAll('option');
 						for (let option of options) {
 							if (option.value === inputValue) {
+								const type = option.getAttribute('data-type') || 'service';
 								const amt = option.getAttribute('data-amount') || '';
-								if (amt) {
-									amountSelect.value = amt;
-									// Move focus to amount after selecting a service
-									amountSelect.focus();
-									amountSelect.select();
+								matchedOption = option;
+								applyGenderFromOption(option);
+
+								if (type === 'combo') {
+									// Handle service combo
+									const quantity = parseFloat(option.getAttribute('data-quantity')) || 0;
+									const totalAmt = parseFloat(option.getAttribute('data-total-amount')) || 0;
+
+									if (amt) {
+										amountSelect.value = amt;
+									}
+
+									// Calculate discount percentage from quantity (offer price)
+									const discountPct = amt > 0 ? ((quantity / parseFloat(amt)) * 100).toFixed(2) : 0;
+									const discountInput = row.querySelector('.item-discount');
+									if (discountInput) {
+										setPercentInputValue(discountInput, discountPct);
+									}
+
+									// Calculate total amount with discount applied
+									// Use the calculated discount percentage to compute total
+									const calculatedTotal2 = parseFloat(amt) - (parseFloat(amt) * (parseFloat(discountPct) / 100));
+									if (lineTotalInput) {
+										lineTotalInput.value = formatDisplayAmount(calculatedTotal2);
+									}
+
+									// Move focus to discount after selecting a combo
+									if (discountInput) {
+										discountInput.focus();
+										discountInput.select();
+									}
+								} else {
+									// Handle regular service
+									if (amt) {
+										amountSelect.value = amt;
+										// Move focus to amount after selecting a service
+										amountSelect.focus();
+										amountSelect.select();
+									}
+									// Reset discount for regular services
+									const discountInput = row.querySelector('.item-discount');
+									if (discountInput) {
+										setPercentInputValue(discountInput, 0);
+									}
 								}
 								break;
 							}
 						}
+					}
+					if (!matchedOption) {
+						applyGenderFromOption(null);
 					}
 					updateHiddenCategories();
 					recalculateRow(amountSelect, lineTotalInput);
@@ -676,14 +1109,48 @@
 				amountSelect.addEventListener('focus', function() { amountSelect.select(); });
 				discountInputRow.addEventListener('focus', function() { discountInputRow.select(); });
 
+				// Recalculate on discount change (both input and change events for instant feedback)
 				discountInputRow.addEventListener('input', function() {
 					recalculateRow(amountSelect, lineTotalInput);
 				});
+				discountInputRow.addEventListener('change', function() {
+					recalculateRow(amountSelect, lineTotalInput);
+				});
+				discountInputRow.addEventListener('blur', function() {
+					setPercentInputValue(discountInputRow, discountInputRow.value);
+				});
+
+				if (lineTotalInput) {
+					lineTotalInput.addEventListener('input', function() {
+						syncServiceDiscountFromTotal(amountSelect, lineTotalInput, discountInputRow);
+						recalculateRow(amountSelect, lineTotalInput);
+					});
+					lineTotalInput.addEventListener('change', function() {
+						syncServiceDiscountFromTotal(amountSelect, lineTotalInput, discountInputRow);
+						recalculateRow(amountSelect, lineTotalInput);
+					});
+					lineTotalInput.addEventListener('blur', function() {
+						const formatted = formatDisplayAmount(parseFloat(lineTotalInput.value) || 0);
+						lineTotalInput.value = formatted;
+					});
+				}
 				removeBtn.addEventListener('click', function() {
 					row.remove();
 					updateHiddenCategories();
 					recalculateFromItems();
 				});
+
+                if (rowEmployeeSelect) {
+                    populateRowEmployeeSelect(rowEmployeeSelect);
+                    const initialOpt = rowEmployeeSelect.options[rowEmployeeSelect.selectedIndex];
+                    const initialCode = initialOpt ? (initialOpt.getAttribute('data-employee-id') || '') : '';
+                    if (rowEmployeeDetails) { rowEmployeeDetails.value = initialCode; }
+                    rowEmployeeSelect.addEventListener('change', function() {
+                        const selectedOption = this.options[this.selectedIndex];
+                        const empCode = selectedOption ? (selectedOption.getAttribute('data-employee-id') || '') : '';
+                        if (rowEmployeeDetails) { rowEmployeeDetails.value = empCode; }
+                    });
+                }
 
 				amountSelect.addEventListener('keydown', function(e) {
 					if (e.key === 'Enter') { e.preventDefault(); discountInputRow.focus(); discountInputRow.select(); }
@@ -706,12 +1173,12 @@
 				const rate = parseFloat(amountSelect.value) || 0;
 				const row = amountSelect.closest('tr');
 				const discountEl = row ? row.querySelector('.item-discount') : null;
-				const discountPct = parseFloat(discountEl && discountEl.value) || 0;
-				const net = rate - (rate * (discountPct / 100));
+				const discountPct = getPercentInputValue(discountEl);
 
-				// For service items, we only calculate the net amount (after discount)
-				// Tax will be calculated overall, not per item
-				if (lineTotalInput) lineTotalInput.value = net.toFixed(2);
+				// Always calculate: Total Amount = Amount - (Amount * Discount%)
+				// This applies to both regular services and combos when discount is manually changed
+				const net = rate - (rate * (discountPct / 100));
+				if (lineTotalInput) lineTotalInput.value = formatDisplayAmount(net);
 				recalculateFromItems();
 			}
 
@@ -726,9 +1193,9 @@
 				if (!bodyEl) { return; }
 				const rows = bodyEl.querySelectorAll('tr');
 				rows.forEach(function(r) {
-					const rate = parseFloat(r.querySelector('.item-amount').value) || 0;
-					const discountPct = parseFloat(r.querySelector('.item-discount').value) || 0;
-					const net = rate - (rate * (discountPct / 100));
+					// Use the line total directly (already calculated, works for both services and combos)
+					const lineTotalInput = r.querySelector('.item-line-total');
+					const net = parseFloat(lineTotalInput && lineTotalInput.value) || 0;
 					sumBase += net;
 				});
 
@@ -754,10 +1221,113 @@
 				if (displayAfterTax) displayAfterTax.value = totalAfterTax.toFixed(2);
 				const totalCalcHidden = document.getElementById('total-calculation-hidden');
 				if (totalCalcHidden) totalCalcHidden.value = totalAfterTax.toFixed(2);
+                if (typeof window.updatePaymentSummary === 'function') {
+                    window.updatePaymentSummary();
+                }
 			}
 
 			// Delegate click to ensure element exists when clicked
 			$(document).on('click', '#addnew #add-item', function(){ addRow(); });
+
+			// Handle service combo dropdown selection
+			const serviceComboSelect = document.getElementById('service-combo-select');
+			if (serviceComboSelect) {
+				serviceComboSelect.addEventListener('change', function() {
+					const selectedOption = this.options[this.selectedIndex];
+					if (!selectedOption || !selectedOption.value) {
+						return; // No combo selected
+					}
+
+					const comboName = selectedOption.getAttribute('data-combo-name') || '';
+					const amount = parseFloat(selectedOption.getAttribute('data-amount')) || 0;
+					const quantity = parseFloat(selectedOption.getAttribute('data-quantity')) || 0;
+					const totalAmount = parseFloat(selectedOption.getAttribute('data-total-amount')) || 0;
+					const tax = parseFloat(selectedOption.getAttribute('data-tax')) || 18;
+
+					// Add a new row
+					const bodyEl = getServiceBody();
+					if (!bodyEl) { return; }
+
+					const row = document.createElement('tr');
+					const datalistId = 'service-suggestions-' + Date.now();
+
+					// Build datalist options HTML (same as in addRow function)
+					let datalistOptions = '';
+					@foreach($services as $srv)
+					 datalistOptions += '<option value="{{ addslashes($srv->service_name) }}" label="{{ addslashes($srv->service_name) }}{{ $srv->gender ? ' (' . $srv->gender . ')' : '' }}" data-amount="{{ $srv->amount }}" data-tax="{{ $srv->tax ?? 18 }}" data-type="service" data-gender="{{ $srv->gender ?? '' }}">{{ addslashes($srv->service_name) }}</option>';
+					@endforeach
+					@php
+						$serviceCombos = $serviceCombos ?? collect([]);
+					@endphp
+					@foreach($serviceCombos as $combo)
+						<?php
+							$comboName2 = $combo->service_combo ?? '';
+							if (is_string($combo->service_combo) && !empty($combo->service_combo)) {
+								$decoded = json_decode($combo->service_combo, true);
+								if (is_array($decoded) && !empty($decoded)) {
+									$serviceNames = \App\Models\ServiceManagement::whereIn('id', $decoded)->pluck('service_name')->toArray();
+									$comboName2 = !empty($serviceNames) ? implode(' + ', $serviceNames) : ($combo->service_combo ?? '');
+								}
+							}
+							if (empty($comboName2)) {
+								$comboName2 = $combo->service_combo ?? 'Unnamed Combo';
+							}
+						?>
+					 datalistOptions += '<option value="{{ addslashes($comboName2) }}" label="{{ addslashes($comboName2) }} (Combo)" data-amount="{{ $combo->amount }}" data-quantity="{{ $combo->quantity }}" data-total-amount="{{ $combo->total_amount }}" data-tax="{{ $combo->tax ?? 18 }}" data-type="combo" data-gender="">{{ addslashes($comboName2) }} (Combo)</option>';
+					@endforeach
+
+					// Calculate discount percentage from quantity (offer price)
+					// quantity is the discount amount, so discount% = (quantity / amount) * 100
+					const discountPct = amount > 0 ? ((quantity / amount) * 100) : 0;
+					// Calculate total amount: Amount - (Amount * Discount%)
+					const calculatedTotal = amount - (amount * (parseFloat(discountPct) / 100));
+
+					row.innerHTML = `
+						<td>
+							<div class="service-input-container" style="position: relative;">
+								<input type="text" class="form-control item-service-input" name="category[]" placeholder="Type or select service..." autocomplete="off" list="${datalistId}" value="${comboName.replace(/"/g, '&quot;')}">
+								<datalist id="${datalistId}">
+									${datalistOptions}
+								</datalist>
+								<button type="button" class="btn btn-sm btn-outline-secondary service-dropdown-toggle" style="position: absolute; right: 5px; top: 50%; transform: translateY(-50%); z-index: 10; border: none; background: transparent; padding: 2px 8px;">
+									<i class="fa fa-chevron-down" style="font-size: 12px;"></i>
+								</button>
+							</div>
+						</td>
+						<td><input type="number" name="item_amount[]" step="0" min="0" inputmode="decimal" placeholder="0" class="form-control item-amount" value="${amount.toFixed(2)}" readonly></td>
+						<td>
+                            <div class="input-group input-group-sm percent-input-group">
+							    <input type="number" min="0" max="100" step="0.01" name="item_discount[]" inputmode="decimal" placeholder="0" class="form-control item-discount" value="${formatPercentValue(discountPct)}">
+                                <div class="input-group-append"><span class="input-group-text">%</span></div>
+                            </div>
+                        </td>
+						<td>
+                            <select class="form-control row-employee-select">
+                                <option value="">---- Select Staff ----</option>
+                            </select>
+                        </td>
+                        <td><input type="text" class="form-control row-employee-details" readonly></td>
+						<td><input type="text" name="item_total_amount[]" inputmode="decimal" class="form-control item-line-total" placeholder="0" value="${formatDisplayAmount(calculatedTotal)}"></td>
+						<td><button type="button" class="btn btn-danger btn-sm remove-item">Remove</button></td>
+					`;
+
+					bodyEl.appendChild(row);
+					applyGenderFilterToRow(row);
+					bindRowEvents(row);
+					recalculateFromItems();
+
+					// Update overall tax if needed
+					const taxInput = document.getElementById('item_tax');
+					if (taxInput && tax !== 18) {
+						taxInput.value = tax;
+						recalculateFromItems();
+					}
+
+					// Reset dropdown
+					this.value = '';
+				});
+			}
+
 			// Recalculate when overall service tax changes
 			const serviceTaxInput = document.getElementById('item_tax');
 			if (serviceTaxInput) {
@@ -769,6 +1339,7 @@
 			$(document).on('shown.bs.modal', '#addnew', function () {
 				const bodyEl = getServiceBody();
 				if (bodyEl) { bodyEl.innerHTML = ''; addRow(); }
+                applyGenderFilterToAllRows();
 			});
 
 			// Clean up when modal is closed
@@ -778,6 +1349,11 @@
 				serviceInputs.forEach(input => {
 					input.value = '';
 				});
+				// Clear service combo dropdown
+				const serviceComboSelect = document.getElementById('service-combo-select');
+				if (serviceComboSelect) {
+					serviceComboSelect.value = '';
+				}
 			});
 
 			// Basic client-side validation including dynamic rows
@@ -801,44 +1377,53 @@
                 const serviceTaxPercentEl = document.getElementById('item_tax');
                 const serviceTaxPercent = parseFloat(serviceTaxPercentEl && serviceTaxPercentEl.value) || 0;
 
-				if (serviceRows.length === 0) {
-					e.preventDefault();
-					alert('Please add at least one service item.');
-					return false;
-				}
-
                 for (const row of serviceRows) {
                     const serviceInput = row.querySelector('.item-service-input');
                     const amountInput = row.querySelector('.item-amount');
                     const discountInput = row.querySelector('.item-discount');
                     const totalInput = row.querySelector('.item-line-total');
+                    const employeeSelectRow = row.querySelector('.row-employee-select');
+                    const employeeDetailRow = row.querySelector('.row-employee-details');
 
                     const nameVal = (serviceInput && serviceInput.value || '').trim();
-                    const amount = parseFloat(amountInput && amountInput.value) || 0;
-                    const discount = parseFloat(discountInput && discountInput.value) || 0;
-                    const net = amount - (amount * (discount / 100));
+                    const amountRaw = parseFloat(amountInput && amountInput.value) || 0;
+                    const amountFormatted = formatStorageAmount(amountRaw);
+                    const amountNumeric = parseFloat(amountFormatted);
+                    const discountRaw = getPercentInputValue(discountInput);
+                    const discountFormatted = formatStorageAmount(discountRaw);
+                    const discountNumeric = parseFloat(discountFormatted);
+                    const net = amountNumeric - (amountNumeric * (discountNumeric / 100));
                     const perItemTaxAmount = net * (serviceTaxPercent / 100);
-                    const totalAmount = (parseFloat(totalInput && totalInput.value) || (net + perItemTaxAmount));
+                    const perItemTaxFormatted = formatStorageAmount(perItemTaxAmount);
+                    const totalInputValue = parseFloat(totalInput && totalInput.value);
+                    const computedTotal = isFinite(totalInputValue) && totalInputValue > 0 ? totalInputValue : (net + perItemTaxAmount);
+                    const totalAmountFormatted = formatStorageAmount(computedTotal);
+                    const employeeIdVal = (employeeSelectRow && employeeSelectRow.value) ? employeeSelectRow.value : '';
+                    const employeeCodeVal = (employeeSelectRow && employeeSelectRow.selectedOptions && employeeSelectRow.selectedOptions[0])
+                        ? (employeeSelectRow.selectedOptions[0].getAttribute('data-employee-id') || '')
+                        : (employeeDetailRow && employeeDetailRow.value ? employeeDetailRow.value : '');
 
                     // Skip placeholder/empty rows
-                    if (!nameVal || (amount <= 0 && totalAmount <= 0)) {
+                    if (!nameVal || (amountNumeric <= 0 && parseFloat(totalAmountFormatted) <= 0)) {
                         continue;
                     }
 
                     serviceItems.push({
                         service_name: nameVal,
-                        amount: amount,
-                        discount: discount,
+                        amount: amountFormatted,
+                        discount: discountFormatted,
                         tax: serviceTaxPercent,
-                        tax_amount: perItemTaxAmount,
-                        total_amount: totalAmount
+                        tax_amount: perItemTaxFormatted,
+                        total_amount: totalAmountFormatted,
+                        employee_id: employeeIdVal,
+                        employee_details: employeeCodeVal
                     });
                 }
 
 				// Append a summary object matching the displayed totals
                 const subtotalComputed = serviceItems.reduce(function(sum, item){
-					const amt = item && typeof item.amount === 'number' ? item.amount : 0;
-					const disc = item && typeof item.discount === 'number' ? item.discount : 0;
+					const amt = item && item.amount ? parseFloat(item.amount) : 0;
+					const disc = item && item.discount ? parseFloat(item.discount) : 0;
 					const net = amt - (amt * (disc / 100));
 					return sum + net;
 				}, 0);
@@ -859,6 +1444,7 @@
                     const productSelect = row.querySelector('.purchase-product');
                     const codeInput = row.querySelector('.purchase-code');
                     const amountInput = row.querySelector('.purchase-amount');
+                    const brandInput = row.querySelector('.purchase-brand');
                     const discountInput = row.querySelector('.purchase-discount');
                     const taxInput = row.querySelector('.purchase-tax');
                     const totalInput = row.querySelector('.purchase-line-total');
@@ -866,7 +1452,7 @@
                     const prodId = (productSelect && productSelect.value || '').trim();
                     const prodName = productSelect && productSelect.options[productSelect.selectedIndex] ? (productSelect.options[productSelect.selectedIndex].text || '').trim() : '';
                     const amt = parseFloat(amountInput && amountInput.value) || 0;
-                    const disc = parseFloat(discountInput && discountInput.value) || 0;
+                    const disc = getPercentInputValue(discountInput);
                     const tax = parseFloat(taxInput && taxInput.value) || 0;
                     const lineTotal = parseFloat(totalInput && totalInput.value) || 0;
 
@@ -875,19 +1461,31 @@
                         continue;
                     }
 
+                    const amountFormatted = formatStorageAmount(amt);
+                    const discountFormatted = formatStorageAmount(disc);
+                    const taxFormatted = formatStorageAmount(tax);
+                    const totalAmountFormatted = formatStorageAmount(lineTotal);
+
                     purchaseItems.push({
                         product_id: prodId,
                         product_name: prodName,
                         product_code: codeInput && codeInput.value || '',
-                        amount: amt,
-                        discount: disc,
-                        tax: tax,
-                        total_amount: lineTotal
+                        brand: brandInput && brandInput.value || '',
+                        amount: amountFormatted,
+                        discount: discountFormatted,
+                        tax: taxFormatted,
+                        total_amount: totalAmountFormatted
                     });
                 }
 
 				console.log('Service items:', serviceItems);
 				console.log('Purchase items:', purchaseItems);
+
+				if (!serviceItems.length && !purchaseItems.length) {
+					e.preventDefault();
+					alert('Please add at least one service or sales item.');
+					return false;
+				}
 
 				// Set the hidden fields with JSON data
                 document.getElementById('service-items-hidden').value = JSON.stringify(serviceItems.length ? serviceItems : []);
@@ -905,7 +1503,9 @@
 				const purchaseTotal = document.getElementById('purchase-total-amount-hidden');
 
                 const computedSubtotal = serviceItems.reduce((sum, item) => {
-					const net = item.amount - (item.amount * (item.discount || 0) / 100);
+					const amountVal = parseFloat(item && item.amount) || 0;
+					const discountVal = parseFloat(item && item.discount) || 0;
+					const net = amountVal - (amountVal * (discountVal / 100));
 					return sum + net;
 				}, 0);
 				const overallTaxPct = parseFloat(document.getElementById('item_tax')?.value) || 0;
@@ -1160,7 +1760,14 @@
                         <option value="">-- Select Product --</option>
                         @isset($managements)
                             @foreach($managements as $mg)
-                                <option value="{{ $mg->id }}" data-code="{{ $mg->product_code }}" data-price="{{ $mg->price }}" data-tax="0">{{ $mg->product_name }} ({{ $mg->product_code }}) - ₹{{ number_format($mg->price, 2) }}</option>
+                                <option
+                                    value="{{ $mg->id }}"
+                                    data-code="{{ $mg->product_code }}"
+                                    data-price="{{ $mg->price }}"
+                                    data-tax="0"
+                                    data-category-name="{{ $mg->categories->name ?? '' }}">
+                                   ({{ $mg->categories->name ?? '' }}) {{ $mg->product_name }} ({{ $mg->product_code }}) - ₹{{ number_format($mg->price, 2) }}
+                                </option>
                             @endforeach
                         @endisset
                     </select>
@@ -1169,13 +1776,19 @@
                     <input type="text" class="form-control purchase-code" name="purchase_code[]" placeholder="Product Code" value="">
                 </td>
                 <td>
-                    <input type="number" name="purchase_amount[]" step="0.01" min="0" inputmode="decimal" placeholder="0.00" class="form-control purchase-amount" value="">
+                    <input type="number" name="purchase_amount[]" step="0" min="0" inputmode="decimal" placeholder="0" class="form-control purchase-amount" value="" readonly>
                 </td>
                 <td>
-                    <input type="number" min="0" max="100" name="purchase_discount[]" inputmode="decimal" placeholder="0" class="form-control purchase-discount" value="0">
+                    <input type="text" class="form-control purchase-brand brand" name="brand[]" value="">
                 </td>
                 <td>
-                    <input type="text" name="purchase_line_total[]" class="form-control purchase-line-total" placeholder="0.00" value="0.00" readonly>
+                    <div class="input-group input-group-sm percent-input-group">
+                        <input type="number" min="0" max="100" step="0.01" name="purchase_discount[]" inputmode="decimal" placeholder="0" class="form-control purchase-discount" value="0">
+                        <div class="input-group-append"><span class="input-group-text">%</span></div>
+                    </div>
+                </td>
+                <td>
+                    <input type="text" name="purchase_line_total[]" inputmode="decimal" class="form-control purchase-line-total" placeholder="0" value="0">
                 </td>
                 <td>
                     <button type="button" class="btn btn-danger btn-sm remove-purchase-item">Remove</button>
@@ -1191,37 +1804,67 @@
             if (amountInputNew) { amountInputNew.focus(); amountInputNew.select(); }
         }
 
+        function syncPurchaseDiscountFromTotal(amountInput, totalInput, discountInput) {
+            if (!amountInput || !totalInput || !discountInput) { return; }
+            const amountVal = parseFloat(amountInput.value);
+            const totalVal = parseFloat(totalInput.value);
+            if (!isFinite(amountVal) || amountVal <= 0) {
+                setPercentInputValue(discountInput, 0);
+                return;
+            }
+            let pct = ((amountVal - totalVal) / amountVal) * 100;
+            if (!isFinite(pct)) { pct = 0; }
+            pct = clampPercentValue(pct);
+            setPercentInputValue(discountInput, pct);
+        }
+
         function bindPurchaseRowEvents(row) {
             const productSelect = row.querySelector('.purchase-product');
             const codeInput = row.querySelector('.purchase-code');
             const amountInput = row.querySelector('.purchase-amount');
+            const brandInput = row.querySelector('.purchase-brand');
             const discountInput = row.querySelector('.purchase-discount');
-            const taxInput = row.querySelector('.purchase-tax');
             const lineTotalInput = row.querySelector('.purchase-line-total');
             const removeBtn = row.querySelector('.remove-purchase-item');
 
             productSelect && productSelect.addEventListener('change', function() {
                 const price = this.options[this.selectedIndex]?.getAttribute('data-price') || '';
                 const code = this.options[this.selectedIndex]?.getAttribute('data-code') || '';
-                const tax = this.options[this.selectedIndex]?.getAttribute('data-tax') || '0';
+                const categoryName = this.options[this.selectedIndex]?.getAttribute('data-category-name') || '';
                 if (codeInput) codeInput.value = code;
                 if (amountInput && price !== '') amountInput.value = price;
-                if (taxInput) taxInput.value = tax;
-                recalcPurchaseRow(amountInput, taxInput, lineTotalInput);
+                if (brandInput) brandInput.value = categoryName;
+                recalcPurchaseRow(row);
                 amountInput && amountInput.focus();
                 amountInput && amountInput.select();
             });
 
             amountInput && amountInput.addEventListener('input', function() {
-                recalcPurchaseRow(amountInput, taxInput, lineTotalInput);
+                recalcPurchaseRow(row);
             });
 
+            // Recalculate on discount change (both input and change events for instant feedback)
             discountInput && discountInput.addEventListener('input', function() {
-                recalcPurchaseRow(amountInput, taxInput, lineTotalInput);
+                recalcPurchaseRow(row);
+            });
+            discountInput && discountInput.addEventListener('change', function() {
+                recalcPurchaseRow(row);
+            });
+            discountInput && discountInput.addEventListener('blur', function() {
+                setPercentInputValue(discountInput, discountInput.value);
             });
 
-            taxInput && taxInput.addEventListener('input', function() {
-                recalcPurchaseRow(amountInput, taxInput, lineTotalInput);
+            lineTotalInput && lineTotalInput.addEventListener('input', function() {
+                syncPurchaseDiscountFromTotal(amountInput, lineTotalInput, discountInput);
+                recalcPurchaseRow(row);
+            });
+            lineTotalInput && lineTotalInput.addEventListener('change', function() {
+                syncPurchaseDiscountFromTotal(amountInput, lineTotalInput, discountInput);
+                recalcPurchaseRow(row);
+            });
+            lineTotalInput && lineTotalInput.addEventListener('blur', function() {
+                const formatted = formatDisplayAmount(parseFloat(lineTotalInput.value) || 0);
+                lineTotalInput.value = formatted;
             });
 
             removeBtn && removeBtn.addEventListener('click', function() {
@@ -1233,14 +1876,10 @@
                 if (e.key === 'Enter') { e.preventDefault(); discountInput && discountInput.focus(); discountInput && discountInput.select(); }
             });
             discountInput && discountInput.addEventListener('keydown', function(e) {
-                if (e.key === 'Enter') { e.preventDefault(); taxInput && taxInput.focus(); taxInput && taxInput.select(); }
-            });
-				taxInput && taxInput.addEventListener('keydown', function(e) {
                 if (e.key === 'Enter') {
                     e.preventDefault();
-						// Trigger add action safely without relying on undefined variables
-						$('#addnew #add-purchase-item').trigger('click');
-						const lastRow = document.getElementById('purchase-items-body')?.querySelector('tr:last-child');
+                    $('#addnew #add-purchase-item').trigger('click');
+                    const lastRow = document.getElementById('purchase-items-body')?.querySelector('tr:last-child');
                     if (lastRow) {
                         const amt = lastRow.querySelector('.purchase-amount');
                         amt && amt.focus();
@@ -1251,18 +1890,16 @@
             // Select content on focus for quick overwrite
             amountInput && amountInput.addEventListener('focus', function() { amountInput.select(); });
             discountInput && discountInput.addEventListener('focus', function() { discountInput.select(); });
-            taxInput && taxInput.addEventListener('focus', function() { taxInput.select(); });
         }
 
-        function recalcPurchaseRow(amountInput, taxInput, lineTotalInput) {
+        function recalcPurchaseRow(row) {
+            const amountInput = row.querySelector('.purchase-amount');
+            const discountInput = row.querySelector('.purchase-discount');
+            const lineTotalInput = row.querySelector('.purchase-line-total');
             const amt = parseFloat(amountInput?.value) || 0;
-            const discountEl = taxInput?.closest('tr') ? taxInput.closest('tr').querySelector('.purchase-discount') : null;
-            const discountPct = parseFloat(discountEl && discountEl.value) || 0;
+            const discountPct = getPercentInputValue(discountInput);
             const net = amt - (amt * (discountPct / 100));
-            const taxPct = parseFloat(taxInput?.value) || 0;
-            const taxAmt = net * (taxPct / 100);
-            const line = net + taxAmt;
-            if (lineTotalInput) lineTotalInput.value = line.toFixed(2);
+            if (lineTotalInput) lineTotalInput.value = formatDisplayAmount(net);
             recalcPurchaseTotals();
         }
 
@@ -1270,21 +1907,20 @@
             const purchaseBody = getPurchaseBody();
             if (!purchaseBody) { return; }
             let sumAmount = 0;
-            let sumTax = 0;
             let sumTotal = 0;
             const rows = purchaseBody.querySelectorAll('tr');
             rows.forEach(function(r) {
                 const amt = parseFloat(r.querySelector('.purchase-amount')?.value) || 0;
-                const discountPct = parseFloat(r.querySelector('.purchase-discount')?.value) || 0;
+                const discountPct = getPercentInputValue(r.querySelector('.purchase-discount'));
                 const net = amt - (amt * (discountPct / 100));
-                const taxPct = parseFloat(r.querySelector('.purchase-tax')?.value) || 0;
-                const taxAmt = net * (taxPct / 100);
-                const line = parseFloat(r.querySelector('.purchase-line-total')?.value) || (net + taxAmt);
+                const line = parseFloat(r.querySelector('.purchase-line-total')?.value) || net;
                 sumAmount += net;
-                sumTax += taxAmt;
                 sumTotal += line;
             });
             if (hiddenPurchaseTotal) hiddenPurchaseTotal.value = sumTotal.toFixed(2);
+            if (typeof window.updatePaymentSummary === 'function') {
+                window.updatePaymentSummary();
+            }
         }
 
         $(document).on('click', '#addnew #add-purchase-item', function(){ addPurchaseRow(); });
@@ -1389,7 +2025,7 @@
                 if (code) code.value = '';
                 if (amt) amt.value = '';
                 if (tax) tax.value = '0';
-                if (tot) tot.value = '0.00';
+                if (tot) tot.value = '0';
                 $('#productItemModal').modal('show');
                 setTimeout(function(){ sel && sel.focus(); }, 250);
             }, true);
@@ -1430,6 +2066,9 @@
                 var hidden = document.getElementById(targetHiddenTotalId);
                 if (hidden) hidden.value = sumTotal.toFixed(2);
             }
+            if (typeof window.updatePaymentSummary === 'function') {
+                window.updatePaymentSummary();
+            }
         }
 
         document.getElementById('modal-save-product') && document.getElementById('modal-save-product').addEventListener('click', function() {
@@ -1455,9 +2094,9 @@
                     </select>
                 </td>
                 <td><input type="text" class="form-control purchase-code" name="purchase_code[]" value="${code.replace(/"/g,'&quot;')}"></td>
-                <td><input type="number" name="purchase_amount[]" step="0.01" min="0" inputmode="decimal" class="form-control purchase-amount" value="${amt.toFixed(2)}" ></td>
+                <td><input type="number" name="purchase_amount[]" step="0" min="0" inputmode="decimal" class="form-control purchase-amount" value="${amt.toFixed(2)}" ></td>
                 <td><input type="number" min="0" max="100" name="purchase_tax[]" inputmode="decimal" class="form-control purchase-tax" value="${taxPct}"></td>
-                <td><input type="text" name="purchase_line_total[]" class="form-control purchase-line-total" value="${total.toFixed(2)}" readonly></td>
+                <td><input type="text" name="purchase_line_total[]" inputmode="decimal" class="form-control purchase-line-total" value="${formatDisplayAmount(total)}"></td>
                 <td><button type="button" class="btn btn-danger btn-sm remove-purchase-item">Remove</button></td>`;
 
             body.appendChild(row);
@@ -1731,6 +2370,10 @@ function myFunction() {
 
             function loadEmployeesByBranch(branchId) {
                 if (!branchId || branchId === '' || branchId === 'Select Branch') {
+                    window.branchEmployees = [];
+                    if (typeof window.refreshServiceRowEmployees === 'function') {
+                        window.refreshServiceRowEmployees();
+                    }
                     // Clear employee dropdown
                     if (employeeSelect) {
                         employeeSelect.innerHTML = '<option selected disabled>---- Select Branch First ----</option>';
@@ -1761,6 +2404,7 @@ function myFunction() {
                     },
                     success: function(response) {
                         if (response.success && response.employees) {
+                            window.branchEmployees = response.employees || [];
                             // Clear and populate employee dropdown with only employee_name
                             if (employeeSelect) {
                                 employeeSelect.innerHTML = '<option selected disabled>---- Select Staff ----</option>';
@@ -1785,7 +2429,14 @@ function myFunction() {
                                     jQuery(employeeSelect).trigger('change.select2');
                                 }
                             }
+                            if (typeof window.refreshServiceRowEmployees === 'function') {
+                                window.refreshServiceRowEmployees();
+                            }
                         } else {
+                            window.branchEmployees = [];
+                            if (typeof window.refreshServiceRowEmployees === 'function') {
+                                window.refreshServiceRowEmployees();
+                            }
                             if (employeeSelect) {
                                 employeeSelect.innerHTML = '<option selected disabled>---- No Employees Found ----</option>';
                                 employeeSelect.disabled = false;
@@ -1799,6 +2450,10 @@ function myFunction() {
                     },
                     error: function(xhr) {
                         console.error('Error loading employees:', xhr);
+                        window.branchEmployees = [];
+                        if (typeof window.refreshServiceRowEmployees === 'function') {
+                            window.refreshServiceRowEmployees();
+                        }
                         if (employeeSelect) {
                             employeeSelect.innerHTML = '<option selected disabled>---- Error Loading Employees ----</option>';
                             employeeSelect.disabled = false;
@@ -1865,7 +2520,7 @@ function myFunction() {
     })();
 </script>
 
-<!-- Cash Payment Section Handler -->
+<!-- Payment Summary & Cash/Gpay Handlers -->
 <script>
     (function() {
         function waitForDom(cb) {
@@ -1875,77 +2530,139 @@ function myFunction() {
             document.addEventListener('DOMContentLoaded', cb);
         }
 
+        function toNumber(value) {
+            var parsed = parseFloat(value);
+            return isNaN(parsed) ? 0 : parsed;
+        }
+
         waitForDom(function() {
+            var serviceTotalInput = document.getElementById('service_total_calculation');
+            var purchaseTotalHidden = document.getElementById('purchase-total-amount-hidden');
+            var totalDisplay = document.getElementById('payment_total_amount');
+
             var cashCheckbox = document.getElementById('payment_cash');
             var cashSection = document.getElementById('cash-payment-section');
+            var cashInvoiceTotal = document.getElementById('cash_invoice_total');
+            var cashBuyAmount = document.getElementById('cash_buy_amount');
             var cashAmountInput = document.getElementById('cash_amount');
             var cashRefundInput = document.getElementById('cash_refund_amount');
             var cashTotalInput = document.getElementById('cash_total_amount');
 
-            if (!cashCheckbox || !cashSection) return;
+            var gpayCheckbox = document.getElementById('payment_gpay');
+            var gpaySection = document.getElementById('gpay-payment-section');
+            var gpayTotalInput = document.getElementById('gpay_total_amount');
+            var gpayAmountInput = document.getElementById('gpay_amount');
+            var gpayBalanceInput = document.getElementById('gpay_balance_amount');
 
-            // Function to calculate and update total
-            function calculateCashTotal() {
-                if (!cashAmountInput || !cashRefundInput || !cashTotalInput) return;
-
-                var amount = parseFloat(cashAmountInput.value) || 0;
-                var refund = parseFloat(cashRefundInput.value) || 0;
-                var total = amount - refund;
-
-                // Ensure total is not negative
-                if (total < 0) {
-                    total = 0;
-                }
-
-                cashTotalInput.value = total.toFixed(2);
+            function computeGrandTotal() {
+                var serviceTotal = serviceTotalInput ? toNumber(serviceTotalInput.value) : 0;
+                var purchaseTotal = purchaseTotalHidden ? toNumber(purchaseTotalHidden.value) : 0;
+                return serviceTotal + purchaseTotal;
             }
 
-            // Function to toggle cash section visibility
-            function toggleCashSection() {
-                if (cashCheckbox.checked) {
-                    cashSection.style.display = 'block';
-                    // Focus on amount input when shown
-                    if (cashAmountInput) {
-                        setTimeout(function() {
-                            cashAmountInput.focus();
-                        }, 100);
+            function toggleSection(section, checkbox, focusInput) {
+                if (!section || !checkbox) return;
+                if (checkbox.checked) {
+                    section.style.display = 'block';
+                    if (focusInput) {
+                        setTimeout(function() { focusInput.focus(); }, 150);
                     }
                 } else {
-                    cashSection.style.display = 'none';
-                    // Clear values when hidden
-                    if (cashAmountInput) cashAmountInput.value = '';
-                    if (cashRefundInput) cashRefundInput.value = '';
-                    if (cashTotalInput) cashTotalInput.value = '0.00';
+                    section.style.display = 'none';
                 }
             }
 
-            // Handle checkbox change
-            cashCheckbox.addEventListener('change', toggleCashSection);
-
-            // Handle amount and refund input changes
-            if (cashAmountInput) {
-                cashAmountInput.addEventListener('input', calculateCashTotal);
-                cashAmountInput.addEventListener('change', calculateCashTotal);
+            function resetCashFields() {
+                if (cashAmountInput) cashAmountInput.value = '';
+                if (cashRefundInput) cashRefundInput.value = '0';
+                if (cashTotalInput) cashTotalInput.value = '0';
             }
 
-            if (cashRefundInput) {
-                cashRefundInput.addEventListener('input', calculateCashTotal);
-                cashRefundInput.addEventListener('change', calculateCashTotal);
+            function resetGpayFields() {
+                if (gpayAmountInput) gpayAmountInput.value = '';
+                if (gpayBalanceInput) gpayBalanceInput.value = '0';
             }
 
-            // Initialize on page load (in case checkbox is pre-checked from old input)
-            toggleCashSection();
+            function calculateDueAfterGpay(total) {
+                var gpayAmount = gpayAmountInput ? toNumber(gpayAmountInput.value) : 0;
+                var due = total - gpayAmount;
+                return due < 0 ? 0 : due;
+            }
 
-            // Also handle when modal opens (in case it's already checked)
+            function calculateRefund(due, cashPaid) {
+                var diff = cashPaid - due;
+                return diff > 0 ? diff : 0;
+            }
+
+            function updateSummary() {
+                var grandTotal = computeGrandTotal();
+                var formattedTotal = grandTotal.toFixed(2);
+
+                if (totalDisplay) totalDisplay.value = formattedTotal;
+                if (gpayTotalInput) gpayTotalInput.value = formattedTotal;
+                if (cashInvoiceTotal) cashInvoiceTotal.value = formattedTotal;
+
+                var dueAfterGpay = calculateDueAfterGpay(grandTotal);
+                if (gpayBalanceInput) gpayBalanceInput.value = dueAfterGpay.toFixed(2);
+                if (cashBuyAmount) cashBuyAmount.value = dueAfterGpay.toFixed(2);
+
+                var cashPaid = cashAmountInput ? toNumber(cashAmountInput.value) : 0;
+                var refund = calculateRefund(dueAfterGpay, cashPaid);
+                var appliedCash = cashPaid - refund;
+                if (appliedCash < 0) appliedCash = 0;
+
+                if (cashRefundInput) cashRefundInput.value = refund.toFixed(2);
+                if (cashTotalInput) cashTotalInput.value = appliedCash.toFixed(2);
+            }
+
+            window.updatePaymentSummary = updateSummary;
+
+            function syncSections() {
+                toggleSection(cashSection, cashCheckbox, cashAmountInput);
+                toggleSection(gpaySection, gpayCheckbox, gpayAmountInput);
+            }
+
+            cashCheckbox && cashCheckbox.addEventListener('change', function() {
+                if (!cashCheckbox.checked) {
+                    resetCashFields();
+                }
+                syncSections();
+                updateSummary();
+            });
+
+            gpayCheckbox && gpayCheckbox.addEventListener('change', function() {
+                if (!gpayCheckbox.checked) {
+                    resetGpayFields();
+                }
+                syncSections();
+                updateSummary();
+            });
+
+            gpayAmountInput && gpayAmountInput.addEventListener('input', updateSummary);
+            gpayAmountInput && gpayAmountInput.addEventListener('change', updateSummary);
+            cashAmountInput && cashAmountInput.addEventListener('input', updateSummary);
+            cashAmountInput && cashAmountInput.addEventListener('change', updateSummary);
+
+            syncSections();
+            updateSummary();
+
             if (typeof jQuery !== 'undefined') {
                 jQuery(document).on('shown.bs.modal', '#addnew', function() {
-                    toggleCashSection();
+                    syncSections();
+                    updateSummary();
                 });
 
-                // Clear cash section when modal is closed
                 jQuery(document).on('hidden.bs.modal', '#addnew', function() {
-                    if (cashCheckbox) cashCheckbox.checked = false;
-                    toggleCashSection();
+                    if (cashCheckbox) {
+                        cashCheckbox.checked = false;
+                        resetCashFields();
+                    }
+                    if (gpayCheckbox) {
+                        gpayCheckbox.checked = false;
+                        resetGpayFields();
+                    }
+                    syncSections();
+                    updateSummary();
                 });
             }
         });

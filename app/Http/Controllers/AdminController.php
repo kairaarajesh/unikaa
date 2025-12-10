@@ -15,13 +15,15 @@ use App\Models\Management;
 use App\Models\Staff_management;
 use App\Models\booking;
 use App\Models\Student;
+use Illuminate\Http\Request;
+use App\Models\Invoice;
 use App\Models\Course;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 
 class AdminController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
         $totalEmp =  count(management::all());
         $category =  count(category::all());
@@ -38,23 +40,49 @@ class AdminController extends Controller
          $customer =  count(Customer::all());
          $employees =  count(Employees::all());
          $student =  count(Student::all());
-        $staff_management =  count( staff_management::all());
-        // $employeeName =  employee::whereDate('date',Carbon::today())->count();
+         $invoice =  count(Invoice::all());
+         $staff_management =  count( staff_management::all());
 
-        $data = [$totalEmp,$category,$purchase,$purchaseMonth,$purchaseLastMonth,$managementBranch,$user,$managementName,$customer,$booking,$employees,$student,$staff_management,$service];
+        $data = [$totalEmp,$category,$purchase,$purchaseMonth,$purchaseLastMonth,$managementBranch,$user,$managementName,$customer,$booking,$employees,$student,$staff_management,$service,$invoice];
             $managementName = management::pluck('Quantity', 'product_name');
 
-            // $twentyDaysAgo = Carbon::today()->subDays(20);
-            // $employeeName = Employee::whereDate('date', $twentyDaysAgo)
-            //     ->select('name', 'category', 'number')
-            //     ->get();
 
-           return view('admin.index', compact('managementName'))->with(['data' => $data]);
+             $filter = $request->get('filter', 'today');
 
-        //    return view('admin.index', compact('managementName','employeeName'))->with(['data' => $data]);
+    // === DATE RANGE LOGIC ===
+    switch ($filter) {
+        case 'today':
+            $invoices = Invoice::whereDate('created_at', Carbon::today());
+            break;
 
-        }
+        case 'week':
+            $invoices = Invoice::whereBetween('created_at', [
+                Carbon::now()->startOfWeek(),
+                Carbon::now()->endOfWeek()
+            ]);
+            break;
 
+        case 'month':
+            $invoices = Invoice::whereMonth('created_at', Carbon::now()->month);
+            break;
+
+        case 'year':
+            $invoices = Invoice::whereYear('created_at', Carbon::now()->year);
+            break;
+
+        default:
+            $invoices = Invoice::whereDate('created_at', Carbon::today());
+            break;
+    }
+
+    // === SUMMARY ===
+    $invoiceCount = $invoices->count();
+    $totalAmount = $invoices->sum('total_amount');
+
+           return view('admin.index', compact('managementName','invoiceCount','totalAmount','filter'))->with(['data' => $data]);
+
+    }
+}
 //     public function header()
 // {
 //     $totalEmployees = Employee::count();
@@ -67,4 +95,4 @@ class AdminController extends Controller
 //     return view('layouts.header', compact('totalEmployees', 'todayEmployees', 'employees20Days'));
 // }
 
-}
+

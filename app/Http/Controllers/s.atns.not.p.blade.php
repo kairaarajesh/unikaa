@@ -260,13 +260,13 @@
                                     <tr>
                                         <th>Emp Id</th>
                                         <th>Emp Name</th>
-                                        {{-- <th>Emp Salary</th> --}}
+                                        <th>Emp Salary</th>
                                         <th>Present Days</th>
                                         <th>Casual Leaves</th>
                                         <th>LOP Days</th>
                                         <th>Half Days</th>
                                         <th>Paid Days</th>
-                                        {{-- <th>Total Salary</th> --}}
+                                        <th>Total Salary</th>
                                     </tr>
                                 </thead>
                                 <tbody id="attendanceStatsBody">
@@ -570,7 +570,6 @@
 (function(){
     let activeEmployeeId = null;
     const canEditPastDates = @json($canEditPastDates ?? false);
-    const maxDaysBackEditable = @json($maxDaysBackEditable ?? 0);
     const permissionModalEl = document.getElementById('permissionModal');
     const halfDayModalEl = document.getElementById('halfDayModal');
     const absentModalEl = document.getElementById('absentModal');
@@ -725,47 +724,12 @@
         return selectedDate < today;
     }
 
-    // Determine whether the selected date is editable in full table/radio format
-    // for the current user (subadmin can edit up to last 2 days, etc.).
-    function canEditSelectedDate(dateString) {
-        if (!dateString) return false;
-
-        const selectedDate = new Date(dateString);
-        const today = new Date();
-        today.setHours(0, 0, 0, 0);
-        selectedDate.setHours(0, 0, 0, 0);
-
-        // Today and future dates are always editable (form already protects invalid)
-        if (selectedDate >= today) {
-            return true;
-        }
-
-        // Full admins (canEditPastDates === true) can edit all past dates
-        if (canEditPastDates) {
-            return true;
-        }
-
-        // For roles like subadmin, allow editing up to N days back
-        if (maxDaysBackEditable > 0) {
-            const diffMs = today.getTime() - selectedDate.getTime();
-            const diffDays = diffMs / (1000 * 60 * 60 * 24);
-            return diffDays <= maxDaysBackEditable;
-        }
-
-        // No special past edit permission
-        return false;
-    }
-
     function toggleViewMode(isPast) {
         const listView = document.getElementById('attendanceListView');
         const tableView = document.getElementById('attendanceTableView');
         const saveBtn = document.getElementById('saveAttendanceBtn');
-        const dateInput = document.querySelector('input[name="attendance_date"]');
-        const dateVal = dateInput ? dateInput.value : '';
-        const canEditDate = dateVal ? canEditSelectedDate(dateVal) : true;
 
-        // Read-only mode only when it's a past date AND user cannot edit that date
-        if (isPast && !canEditDate) {
+        if (isPast && !canEditPastDates) {
             listView.classList.add('active');
             tableView.classList.add('hidden');
             if (saveBtn) {
@@ -874,9 +838,7 @@
         const isPast = isPastDate(dateVal);
         toggleViewMode(isPast);
 
-        const canEditDate = canEditSelectedDate(dateVal);
-
-        if (isPast && !canEditDate) {
+        if (isPast && !canEditPastDates) {
             // Load list view for past dates
             await loadAttendanceListView(dateVal);
             return;
@@ -1249,7 +1211,7 @@
                 form.classList.remove('no-date-selected');
                 const isPast = isPastDate(this.value);
                     toggleViewMode(isPast);
-                    const readOnlyPast = isPast && !canEditSelectedDate(this.value);
+                    const readOnlyPast = isPast && !canEditPastDates;
 
                     if (readOnlyPast) {
                         document.querySelectorAll('.attendance-radio').forEach(radio => {
@@ -1283,7 +1245,7 @@
             // Check initial date
             const isPast = isPastDate(dateInputEl.value);
             toggleViewMode(isPast);
-            const readOnlyPast = isPast && !canEditSelectedDate(dateInputEl.value);
+            const readOnlyPast = isPast && !canEditPastDates;
             document.querySelectorAll('.attendance-radio').forEach(radio => {
                 radio.disabled = readOnlyPast ? true : false;
             });
@@ -1418,13 +1380,13 @@
             row.innerHTML = `
                 <td>${stat.employee_id}</td>
                 <td>${stat.employee_name}</td>
-              <!--   <td>${parseFloat(stat.emp_salary).toFixed(2)}</td> -->
+                <td>${parseFloat(stat.emp_salary).toFixed(2)}</td>
                 <td>${stat.present_days}</td>
                 <td>${stat.casual_leaves}</td>
                 <td>${stat.lop_days}</td>
                 <td>${stat.half_days}</td>
                 <td>${parseFloat(stat.paid_days).toFixed(2)}</td>
-                <!-- <td>${parseFloat(stat.total_salary).toFixed(2)}</td>  -->
+                <td>${parseFloat(stat.total_salary).toFixed(2)}</td>
             `;
 
             tbody.appendChild(row);
@@ -1501,4 +1463,3 @@
 })();
 </script>
 @endsection
-

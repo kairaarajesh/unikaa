@@ -7,6 +7,18 @@
                     <span aria-hidden="true">&times;</span></button>
             </div>
             <h4 class="modal-title"><b>Add Service Combo</b></h4>
+
+                <nav class="navbar navbar-light bg-light justify-content-center">
+                    <form class="form-inline" onsubmit="return false;">
+                        <input class="form-control mr-sm-2" type="search"
+                            placeholder="Search Services..." aria-label="Search" id="serviceSearch">
+
+                        <button type="button" class="btn btn-primary" id="serviceSearchBtn">
+                            Search
+                        </button>
+                    </form>
+                </nav>
+
             <div class="modal-body text-left">
                 <form class="form-horizontal" method="POST" action="{{ route('serviceCombo.store') }}">
                     @csrf
@@ -75,51 +87,86 @@
 </div>
 
 <script>
-document.addEventListener('DOMContentLoaded', function () {
-    function computeTotals() {
-        var servicesTotal = 0;
-        var checkboxes = document.querySelectorAll('#addnewcombo .service-checkbox:checked');
-        checkboxes.forEach(function (cb) {
-            var amt = parseFloat(cb.getAttribute('data-amount')) || 0;
-            servicesTotal += amt;
+    document.addEventListener('DOMContentLoaded', function () {
+        function computeTotals() {
+            var servicesTotal = 0;
+            var checkboxes = document.querySelectorAll('#addnewcombo .service-checkbox:checked');
+            checkboxes.forEach(function (cb) {
+                var amt = parseFloat(cb.getAttribute('data-amount')) || 0;
+                servicesTotal += amt;
+            });
+
+            var amountInput = document.querySelector('#addnewcombo #amount');
+            if (amountInput) {
+                amountInput.value = servicesTotal.toFixed(2);
+            }
+
+            var offerInput = document.querySelector('#addnewcombo #Quantity');
+            var offerPrice = 0;
+            if (offerInput) {
+                offerPrice = parseFloat(offerInput.value) || 0;
+            }
+
+            var totalAmountInput = document.querySelector('#addnewcombo #total_amount');
+            if (totalAmountInput) {
+                var totalAmount = servicesTotal - offerPrice;
+                totalAmountInput.value = totalAmount.toFixed(2);
+            }
+        }
+
+        var allCheckboxes = document.querySelectorAll('#addnewcombo .service-checkbox');
+        allCheckboxes.forEach(function (cb) {
+            cb.addEventListener('change', computeTotals);
         });
 
-        var amountInput = document.querySelector('#addnewcombo #amount');
-        if (amountInput) {
-            amountInput.value = servicesTotal.toFixed(2);
+        var offerInputEl = document.querySelector('#addnewcombo #Quantity');
+        if (offerInputEl) {
+            offerInputEl.addEventListener('input', computeTotals);
+            offerInputEl.addEventListener('change', computeTotals);
         }
 
-        var offerInput = document.querySelector('#addnewcombo #Quantity');
-        var offerPrice = 0;
-        if (offerInput) {
-            offerPrice = parseFloat(offerInput.value) || 0;
+        // Initialize totals when modal opens (in case of pre-checked values)
+        var modalEl = document.getElementById('addnewcombo');
+        if (modalEl) {
+            modalEl.addEventListener('shown.bs.modal', computeTotals);
         }
 
-        var totalAmountInput = document.querySelector('#addnewcombo #total_amount');
-        if (totalAmountInput) {
-            var totalAmount = servicesTotal - offerPrice;
-            totalAmountInput.value = totalAmount.toFixed(2);
-        }
-    }
-
-    var allCheckboxes = document.querySelectorAll('#addnewcombo .service-checkbox');
-    allCheckboxes.forEach(function (cb) {
-        cb.addEventListener('change', computeTotals);
+        computeTotals();
     });
-
-    var offerInputEl = document.querySelector('#addnewcombo #Quantity');
-    if (offerInputEl) {
-        offerInputEl.addEventListener('input', computeTotals);
-        offerInputEl.addEventListener('change', computeTotals);
-    }
-
-    // Initialize totals when modal opens (in case of pre-checked values)
-    var modalEl = document.getElementById('addnewcombo');
-    if (modalEl) {
-        modalEl.addEventListener('shown.bs.modal', computeTotals);
-    }
-
-    // Also compute once on page load in case modal is already visible
-    computeTotals();
-});
 </script>
+   <script>
+        document.addEventListener('DOMContentLoaded', function () {
+
+        var searchInput = document.getElementById('serviceSearch');
+        var searchBtn = document.getElementById('serviceSearchBtn');
+
+        function filterServices() {
+            var searchValue = searchInput.value.toLowerCase().trim();
+            var serviceItems = document.querySelectorAll('#addnewcombo .service-checkbox');
+
+            serviceItems.forEach(function (cb) {
+                var label = cb.getAttribute('data-service-name').toLowerCase();
+                var parentDiv = cb.closest('.col-sm-6.col-md-4');
+
+                if (searchValue === "") {
+                    parentDiv.style.display = ""; // 🔄 show all when empty
+                } else if (label.includes(searchValue)) {
+                    parentDiv.style.display = ""; // show matched
+                } else {
+                    parentDiv.style.display = "none"; // hide unmatched
+                }
+            });
+        }
+
+        // search on button click
+        searchBtn.addEventListener('click', filterServices);
+
+        // optional: search on Enter key
+        searchInput.addEventListener('keypress', function (e) {
+            if (e.key === "Enter") {
+                filterServices();
+            }
+        });
+
+     });
+    </script>

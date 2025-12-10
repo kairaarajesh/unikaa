@@ -31,14 +31,53 @@
                         <input type="text" class="form-control"  name="price" value="{{ $management->price }}"
                             required>
                     </div>
-                    <div class="form-group">
-                        <label for="name" class="col-sm-3 control-label">Branch</label>
-                        <input type="text" class="form-control" id="branch" name="branch" value="{{ $management->branch }}"
-                            required>
-                    </div>
+                    @php($authUser = auth()->user())
+                    @php($isSubadmin = $authUser && method_exists($authUser, 'roles') && $authUser->roles()->where('slug','subadmin')->exists() && isset($authUser->branch_id))
+                    @if($canViewBranchDetails ?? false)
+                        @if($isSubadmin && isset($userBranch))
+                            <input type="hidden" name="branch_id" value="{{ $authUser->branch_id }}">
+                            <div class="form-group">
+                                <label for="branch_id_{{ $management->id }}" class="col-sm-6 control-label">Branch</label>
+                                <select class="form-control" id="branch_id_{{ $management->id }}" name="branch_id" style="pointer-events: none; background-color: #f8f9fa;" readonly>
+                                    <option value="{{ $userBranch->id }}" selected>
+                                        {{ $userBranch->name ?? 'N/A' }}
+                                    </option>
+                                </select>
+                            </div>
+                            {{-- <div class="form-group">
+                                <label for="place_{{ $management->id }}" class="col-sm-5 control-label">Place</label>
+                                <textarea class="form-control" id="place_{{ $management->id }}" name="place" rows="2" readonly style="background-color: #f8f9fa; resize: none;">{{ $userBranch->address ?? $userBranch->place ?? 'N/A' }}</textarea>
+                            </div> --}}
+                        @else
+                            <div class="form-group">
+                                <label for="branch_id_{{ $management->id }}" class="col-sm-6 control-label">Branch</label>
+                                <select class="form-control" id="branch_id_{{ $management->id }}" name="branch_id" required>
+                                    <option value="" disabled>Select Branch</option>
+                                    @foreach($Branch as $branch)
+                                        <option value="{{ $branch->id }}"
+                                                data-place="{{ $branch->place }}"
+                                                data-address="{{ $branch->address }}"
+                                                {{ $management->branch_id == $branch->id ? 'selected' : '' }}>
+                                            {{ $branch->name }}
+                                        </option>
+                                    @endforeach
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label for="place_{{ $management->id }}" class="col-sm-5 control-label">Place</label>
+                                <input type="text" class="form-control" id="place_{{ $management->id }}" name="place" value="{{ $management->place }}" readonly placeholder="Auto-filled from branch">
+                            </div>
+                        @endif
+                    @else
+                        <input type="hidden" name="branch_id" value="{{ $management->branch_id ?? '' }}">
+                        <div class="form-group">
+                            <label for="place_{{ $management->id }}" class="col-sm-5 control-label">Place</label>
+                            <input type="text" class="form-control" id="place_{{ $management->id }}" name="place" value="{{ $management->place }}" placeholder="Enter place">
+                        </div>
+                    @endif
                     <div class="form-group">
                         <label for="name" class="col-sm-3 control-label">Date</label>
-                        <input type="datetime-local" class="form-control"  name="date" value="{{ $management->date }}"
+                        <input type="date" class="form-control"  name="date" value="{{ $management->date }}"
                             required>
                     </div>
                     <div class="form-group">
@@ -90,3 +129,36 @@
         </div>
     </div>
 </div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        var branchSelect = document.getElementById('branch_id_{{ $management->id }}');
+        var placeInput = document.getElementById('place_{{ $management->id }}');
+
+        if (branchSelect && placeInput) {
+            function updatePlaceFromBranch() {
+                var selected = branchSelect.options[branchSelect.selectedIndex];
+                if (!selected || !selected.value || selected.value === 'Select Branch') {
+                    placeInput.value = '';
+                    return;
+                }
+                // Get place from data attributes, prefer address over place
+                var place = selected.getAttribute('data-address') || selected.getAttribute('data-place') || '';
+                placeInput.value = place;
+            }
+
+            // Add event listener for branch selection change
+            branchSelect.addEventListener('change', updatePlaceFromBranch);
+
+            // Handle Select2 if it's being used
+            if (typeof jQuery !== 'undefined' && jQuery(branchSelect).hasClass('select2-hidden-accessible')) {
+                jQuery(branchSelect).on('change', function() {
+                    updatePlaceFromBranch();
+                });
+            }
+
+            // Initialize on load if a branch is preselected
+            updatePlaceFromBranch();
+        }
+    });
+</script>
